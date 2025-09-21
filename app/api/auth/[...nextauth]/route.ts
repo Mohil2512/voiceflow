@@ -3,14 +3,22 @@ import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { getUserCollection } from '@/lib/database/mongodb'
 import { ObjectId } from 'mongodb'
+
+// Conditional import of database functions
+const getUserCollection = async () => {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('Database not available')
+  }
+  const { getUserCollection: getCollection } = await import('@/lib/database/mongodb')
+  return getCollection()
+}
 
 const handler = NextAuth({
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       authorization: {
         params: {
           prompt: "consent",
@@ -20,8 +28,8 @@ const handler = NextAuth({
       }
     }),
     GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: process.env.GITHUB_CLIENT_ID || '',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
     }),
     CredentialsProvider({
       name: 'credentials',
@@ -78,6 +86,19 @@ const handler = NextAuth({
   callbacks: {
     async signIn({ user, account, profile }) {
       console.log('SignIn callback:', { user, account, provider: account?.provider })
+      
+      // Skip database operations during build time
+      if (!process.env.MONGODB_URI) {
+        console.log('Skipping database operations - MongoDB URI not available')
+        // Set default user properties for temporary auth
+        user.id = user.id || 'temp-' + Date.now()
+        user.profileComplete = false
+        user.username = user.email?.split('@')[0] || 'user'
+        user.dateOfBirth = null
+        user.gender = null
+        user.phoneNumber = null
+        return true
+      }
       
       if (account?.provider === 'google' || account?.provider === 'github') {
         try {
@@ -160,6 +181,11 @@ const handler = NextAuth({
         console.log('Explicit session update requested')
         // Merge session data into token
         token = { ...token, ...session.user }
+      }
+
+      // Skip database operations during build time
+      if (!process.env.MONGODB_URI && process.env.NODE_ENV === 'production') {
+        return token
       }
 
       return token
