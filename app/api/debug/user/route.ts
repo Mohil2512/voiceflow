@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { ObjectId } from 'mongodb'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 // Conditional import of database functions
 const getUserCollection = async () => {
   if (!process.env.MONGODB_URI) {
