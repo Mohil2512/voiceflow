@@ -7,7 +7,7 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 
-// MongoDB client options - simplified for better compatibility
+// MongoDB client options - enhanced for Vercel compatibility
 const options = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
@@ -15,6 +15,10 @@ const options = {
   connectTimeoutMS: 10000,
   retryWrites: true,
   w: 'majority' as const,
+  // SSL/TLS options for better compatibility
+  ssl: true,
+  tlsAllowInvalidCertificates: false,
+  tlsInsecure: false,
 }
 
 let client: MongoClient
@@ -41,14 +45,19 @@ if (process.env.NODE_ENV === 'development') {
 // Export a module-scoped MongoClient promise for NextAuth
 export default clientPromise
 
-// Database connections for our three databases
+// Database connections for our three databases with error handling
 export const getDatabases = async () => {
-  const client = await clientPromise
-  
-  return {
-    auth: client.db('voiceflow_auth'),
-    profiles: client.db('voiceflow_profiles'), 
-    activities: client.db('voiceflow_activities')
+  try {
+    const client = await clientPromise
+    
+    return {
+      auth: client.db('voiceflow_auth'),
+      profiles: client.db('voiceflow_profiles'), 
+      activities: client.db('voiceflow_activities')
+    }
+  } catch (error) {
+    console.error('MongoDB connection failed:', error)
+    throw new Error('Database connection unavailable')
   }
 }
 
@@ -72,15 +81,25 @@ export const connectToAuthDB = () => getMongooseConnection('voiceflow_auth')
 export const connectToProfilesDB = () => getMongooseConnection('voiceflow_profiles')
 export const connectToActivitiesDB = () => getMongooseConnection('voiceflow_activities')
 
-// Collection helper functions
+// Collection helper functions with error handling
 export const getUserCollection = async () => {
-  const databases = await getDatabases()
-  return databases.auth.collection('users')
+  try {
+    const databases = await getDatabases()
+    return databases.auth.collection('users')
+  } catch (error) {
+    console.error('Failed to get user collection:', error)
+    throw error
+  }
 }
 
 export const getProfileCollection = async () => {
-  const databases = await getDatabases()
-  return databases.profiles.collection('profiles')
+  try {
+    const databases = await getDatabases()
+    return databases.profiles.collection('profiles')
+  } catch (error) {
+    console.error('Failed to get profile collection:', error)
+    throw error
+  }
 }
 
 export const getActivityCollection = async () => {
