@@ -15,10 +15,6 @@ const options = {
   connectTimeoutMS: 10000,
   retryWrites: true,
   w: 'majority' as const,
-  // SSL/TLS options for better compatibility
-  ssl: true,
-  tlsAllowInvalidCertificates: false,
-  tlsInsecure: false,
 }
 
 let client: MongoClient | null = null
