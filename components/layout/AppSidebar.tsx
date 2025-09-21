@@ -1,141 +1,158 @@
 "use client"
 
-import React, { useState } from "react"
-import Link from "next/link"
+import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
+import { useSession, signOut } from "next-auth/react"
+import Link from "next/link"
+import { useTheme } from "next-themes"
 import { 
   Home, 
   Search, 
-  Plus, 
   Heart, 
+  MessageCircle, 
   User, 
-  Menu,
-  Sun,
+  LogOut, 
+  Sun, 
   Moon,
+  PlusSquare,
+  Menu,
   Monitor
 } from "lucide-react"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
-import { useTheme } from "@/providers/theme-provider"
 import { cn } from "@/lib/utils"
-import { Logo } from "@/components/ui/Logo"
-
-const sidebarItems = [
-  { title: "Home", url: "/", icon: Home },
-  { title: "Search", url: "/search", icon: Search },
-  { title: "Create", url: "/create", icon: Plus },
-  { title: "Activity", url: "/activity", icon: Heart },
-  { title: "Profile", url: "/profile", icon: User },
-]
-
-const themeIcons = {
-  light: Sun,
-  dark: Moon,
-  system: Monitor,
-}
 
 export function AppSidebar() {
-  const { theme, setTheme } = useTheme()
-  const [showMore, setShowMore] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  const [showMore, setShowMore] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleThemeChange = () => {
-    if (theme === "light") setTheme("dark")
-    else if (theme === "dark") setTheme("system")
-    else setTheme("light")
+  const handleSignOut = () => {
+    signOut({ callbackUrl: "/" })
   }
 
-  // Get current theme with fallback, ensuring theme icon works immediately
-  const currentTheme = theme || "system"
-  const ThemeIcon = themeIcons[currentTheme as keyof typeof themeIcons] || Monitor
-  
-  // Get theme label with proper fallback
-  const getThemeLabel = () => {
-    switch (currentTheme) {
-      case "light": return "Light"
-      case "dark": return "Dark" 
-      default: return "System"
-    }
+  const handleThemeToggle = () => {
+    setTheme(theme === "dark" ? "light" : "dark")
+  }
+
+  const mainSidebarItems = [
+    {
+      title: "Home",
+      url: "/",
+      icon: Home,
+    },
+    {
+      title: "Search",
+      url: "/search",
+      icon: Search,
+    },
+    {
+      title: "Create",
+      url: "/create",
+      icon: PlusSquare,
+    },
+    {
+      title: "Activity",
+      url: "/activity",
+      icon: Heart,
+    },
+    {
+      title: "Profile",
+      url: "/profile",
+      icon: User,
+    },
+    {
+      title: "More",
+      url: "#",
+      icon: Menu,
+      onClick: () => setShowMore(!showMore),
+    },
+  ]
+
+  const moreMenuItems = [
+    {
+      title: theme === "dark" ? "Light Mode" : "Dark Mode",
+      url: "#",
+      icon: theme === "dark" ? Sun : Moon,
+      onClick: handleThemeToggle,
+    },
+    ...(session ? [{
+      title: "Log Out",
+      url: "#",
+      icon: LogOut,
+      onClick: handleSignOut,
+    }] : []),
+  ]
+
+  if (!mounted) {
+    return (
+      <div className="w-72 h-screen bg-background border-r border-border flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+      </div>
+    )
   }
 
   return (
-    <Sidebar className="border-r border-border w-64">
-      <SidebarContent className="px-4 py-6">
-        {/* Logo */}
+    <div className="w-72 h-screen bg-background border-r border-border flex flex-col">
+      <div className="flex-1 px-6 py-8">
         <div className="mb-8 px-2">
           <div className="flex items-center gap-3">
-            <Logo className="h-8 w-8 text-foreground" />
+            <div className="w-8 h-8 rounded-full flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="Voiceflow Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
             <div className="flex flex-col">
-              <span className="font-bold text-xl text-foreground">voiceflow</span>
+              <span className="font-bold text-xl text-foreground">Voiceflow</span>
               <span className="text-xs text-muted-foreground">by Anjaneya</span>
             </div>
           </div>
         </div>
-
-        {/* Navigation */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-2">
-              {sidebarItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild size="lg" className="hover:bg-accent">
-                    <Link
-                      href={item.url}
-                      className={cn(
-                        "flex items-center gap-3 rounded-xl px-3 py-3 transition-colors",
-                        pathname === item.url
-                          ? "bg-accent text-accent-foreground font-medium" 
-                          : "text-foreground hover:bg-accent hover:text-accent-foreground"
-                      )}
-                    >
-                      <item.icon className="h-6 w-6" />
-                      <span className="text-base">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* More Section */}
-        <div className="mt-8">
-          <Button
-            variant="ghost"
-            onClick={() => setShowMore(!showMore)}
-            className="w-full justify-start gap-3 px-3 py-3 h-auto text-base hover:bg-accent"
-          >
-            <Menu className="h-6 w-6" />
-            More
-          </Button>
-          
-          {showMore && (
-            <div className="mt-2 space-y-2 pl-9">
-              <Button
-                variant="ghost"
-                onClick={handleThemeChange}
-                className="w-full justify-start gap-3 px-3 py-2 h-auto text-sm hover:bg-accent"
+        <nav className="space-y-1">
+          {mainSidebarItems.map((item) => {
+            const isActive = pathname === item.url
+            return (
+              <Link
+                key={item.title}
+                href={item.url}
+                onClick={item.onClick}
+                className={cn(
+                  "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full",
+                  isActive
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
               >
-                <ThemeIcon className="h-4 w-4" />
-                {getThemeLabel()}
-              </Button>
-            </div>
-          )}
-        </div>
-      </SidebarContent>
-    </Sidebar>
+                <item.icon className={cn("h-7 w-7", isActive ? "stroke-2" : "stroke-1")} />
+                <span className="text-xl font-normal">{item.title}</span>
+              </Link>
+            )
+          })}
+        </nav>
+        
+        {/* More Menu Dropdown */}
+        {showMore && (
+          <div className="mt-2 space-y-1 ml-4 border-l-2 border-border pl-4">
+            {moreMenuItems.map((item) => (
+              <Link
+                key={item.title}
+                href={item.url}
+                onClick={item.onClick}
+                className="flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                <item.icon className="h-6 w-6" />
+                <span className="text-lg font-normal">{item.title}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

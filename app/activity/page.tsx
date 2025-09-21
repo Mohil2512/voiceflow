@@ -1,8 +1,13 @@
+"use client"
+
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import { Layout } from "@/components/layout/Layout"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
-import { Heart, MessageCircle, Repeat2, UserPlus } from "lucide-react"
+import { Heart, MessageCircle, Repeat2, UserPlus, User } from "lucide-react"
 
 const mockActivities = [
   {
@@ -49,6 +54,77 @@ const getActivityIcon = (type: string) => {
 }
 
 export default function ActivityPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  // Don't automatically redirect - let middleware handle authentication
+  // This prevents redirect loops
+  // useEffect(() => {
+  //   if (status === "unauthenticated") {
+  //     router.push("/auth/signin")
+  //   }
+  // }, [status, router])
+
+  if (status === "loading") {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
+            <p className="mt-2 text-foreground">Loading activity...</p>
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
+  // Only show login prompt if explicitly unauthenticated
+  if (status === "unauthenticated") {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="text-center min-h-[400px] flex items-center justify-center">
+            <div className="border border-border rounded-lg p-8 max-w-md w-full">
+              <div className="mb-4">
+                <div className="w-20 h-20 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <User className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h1 className="text-2xl font-bold mb-2">Your Activity</h1>
+                <p className="text-muted-foreground mb-4">Sign in to view your notifications and activity</p>
+              </div>
+              <div className="space-y-3">
+                <Button 
+                  onClick={() => {
+                    localStorage.setItem("redirectAfterLogin", "/activity")
+                    window.location.href = "/auth/signin"
+                  }}
+                  className="w-full"
+                >
+                  Sign In
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
+  // Safety check - if we don't have a session but we're not explicitly unauthenticated,
+  // show loading state (this handles edge cases during authentication)
+  if (!session && status === "authenticated") {
+    return (
+      <Layout>
+        <div className="max-w-2xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
+            <p className="mt-2 text-foreground">Loading activity...</p>
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
   return (
     <Layout>
       <div className="max-w-2xl mx-auto p-6">

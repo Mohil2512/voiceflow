@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { getServerSession } from 'next-auth/next'
 import './globals.css'
 import { Providers } from './providers'
 
@@ -15,15 +16,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getServerSession()
+
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>
+      <body className={inter.className} suppressHydrationWarning>
+        <Providers session={session}>
           {children}
         </Providers>
       </body>
