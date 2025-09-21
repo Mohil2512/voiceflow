@@ -93,7 +93,7 @@ export default function ProfilePage() {
 
   // Safety check - if we don't have a session but we're not explicitly unauthenticated,
   // show loading state (this handles edge cases during authentication)
-  if (!session && status !== "unauthenticated") {
+  if (!session && status === "authenticated") {
     return (
       <Layout>
         <div className="max-w-2xl mx-auto bg-background text-foreground min-h-screen flex items-center justify-center">
