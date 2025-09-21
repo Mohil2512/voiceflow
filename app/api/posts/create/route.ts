@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
-import { getDatabases } from '@/lib/database/mongodb'
+
+// Conditional import of database functions
+const getDatabases = async () => {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('Database not available')
+  }
+  const { getDatabases: getDB } = await import('@/lib/database/mongodb')
+  return getDB()
+}
 
 const authOptions = {
   // We'll get the session directly from the request headers

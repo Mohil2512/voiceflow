@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserCollection } from '@/lib/database/mongodb'
 import { VALIDATION_RULES } from '@/lib/database/schemas'
 import { ObjectId } from 'mongodb'
+
+// Conditional import of database functions
+const getUserCollection = async () => {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('Database not available')
+  }
+  const { getUserCollection: getCollection } = await import('@/lib/database/mongodb')
+  return getCollection()
+}
 
 export async function POST(request: NextRequest) {
   try {

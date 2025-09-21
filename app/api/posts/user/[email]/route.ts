@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDatabases } from '@/lib/database/mongodb'
+
+// Conditional import of database functions
+const getDatabases = async () => {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('Database not available')
+  }
+  const { getDatabases: getDB } = await import('@/lib/database/mongodb')
+  return getDB()
+}
 
 export async function GET(
   request: NextRequest,
