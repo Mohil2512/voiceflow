@@ -91,19 +91,7 @@ export default function ProfilePage() {
     )
   }
 
-  // Safety check - if we don't have a session but we're not explicitly unauthenticated,
-  // show loading state (this handles edge cases during authentication)
-  if (!session && status === "authenticated") {
-    return (
-      <Layout>
-        <div className="max-w-2xl mx-auto bg-background text-foreground min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
-          <p className="ml-2 text-foreground">Loading profile...</p>
-        </div>
-      </Layout>
-    )
-  }
-
+  // If we reach here, user should be authenticated with a valid session
   const currentUser = {
     name: session.user.name || "User",
     username: session.user.username || session.user.email?.split("@")[0] || "user",
