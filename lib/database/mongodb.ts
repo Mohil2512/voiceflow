@@ -7,7 +7,7 @@ if (!process.env.MONGODB_URI && process.env.NODE_ENV !== 'development') {
 
 const uri = process.env.MONGODB_URI || ''
 
-// MongoDB client options - enhanced for Vercel compatibility
+// MongoDB client options - minimal configuration for maximum compatibility
 const options = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 10000,
@@ -15,10 +15,6 @@ const options = {
   connectTimeoutMS: 10000,
   retryWrites: true,
   w: 'majority' as const,
-  // Add specific options for MongoDB Atlas
-  tls: true,
-  tlsAllowInvalidHostnames: false,
-  tlsAllowInvalidCertificates: false,
 }
 
 let client: MongoClient | null = null

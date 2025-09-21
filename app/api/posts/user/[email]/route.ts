@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 // Conditional import of database functions
 const getDatabases = async () => {
   if (!process.env.MONGODB_URI) {

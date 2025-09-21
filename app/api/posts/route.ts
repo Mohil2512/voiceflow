@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+
 // Conditional import of database functions
 const getDatabases = async () => {
   if (!process.env.MONGODB_URI) {
@@ -9,8 +12,40 @@ const getDatabases = async () => {
   return getDB()
 }
 
+function formatTimestamp(date: Date | string): string {
+  if (!date) return 'now'
+  
+  const now = new Date()
+  const postDate = new Date(date)
+  const diffInMs = now.getTime() - postDate.getTime()
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+  const diffInDays = Math.floor(diffInHours / 24)
+  
+  if (diffInHours < 1) return 'now'
+  if (diffInHours < 24) return `${diffInHours}h`
+  if (diffInDays < 7) return `${diffInDays}d`
+  return postDate.toLocaleDateString()
+}
+
+// Mock data for when database is unavailable
+const getMockPosts = () => [
+  {
+    id: 'mock-1',
+    user: {
+      name: 'Demo User',
+      email: 'demo@example.com',
+      image: '/placeholder.svg'
+    },
+    content: 'Welcome to Voiceflow! This is a demo post while the database is initializing.',
+    timestamp: formatTimestamp(new Date()),
+    likes: 0,
+    comments: 0
+  }
+]
+
 export async function GET(request: NextRequest) {
   try {
+    // Try to connect to database
     const { activities } = await getDatabases()
     
     // Get posts from database, sorted by creation date (newest first)
@@ -40,29 +75,14 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching posts:', error)
     
-    // For now, return empty array when database is not available
+    // Return mock data when database is not available
     // This allows the app to function even without database connection
     return NextResponse.json(
       { 
-        posts: [],
-        message: 'Database temporarily unavailable. Please try again later.'
+        posts: getMockPosts(),
+        message: 'Using demo data - database temporarily unavailable.'
       },
       { status: 200 } // Return 200 instead of 500 to avoid frontend errors
     )
   }
-}
-
-function formatTimestamp(date: Date | string): string {
-  if (!date) return 'now'
-  
-  const now = new Date()
-  const postDate = new Date(date)
-  const diffInMs = now.getTime() - postDate.getTime()
-  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
-  const diffInDays = Math.floor(diffInHours / 24)
-  
-  if (diffInHours < 1) return 'now'
-  if (diffInHours < 24) return `${diffInHours}h`
-  if (diffInDays < 7) return `${diffInDays}d`
-  return postDate.toLocaleDateString()
 }
