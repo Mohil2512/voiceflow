@@ -25,6 +25,23 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Force a dark mode flash instead of light mode flash */}
+        <style dangerouslySetInnerHTML={{ 
+          __html: `
+            :root {
+              color-scheme: dark;
+            }
+            html {
+              color-scheme: dark;
+            }
+            body {
+              background-color: black;
+              color: white;
+            }
+          `
+        }} />
+      </head>
       <body className={inter.className} suppressHydrationWarning>
         <Providers session={session}>
           {children}

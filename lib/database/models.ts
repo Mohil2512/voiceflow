@@ -68,7 +68,6 @@ const userProfileSchema = new Schema<IUserProfile>({
   avatar: String,
   bio: String,
   website: String,
-  location: String,
   
   // Privacy Settings
   isPrivate: { type: Boolean, default: false },
@@ -127,7 +126,6 @@ const postSchema = new Schema<IPost>({
   allowComments: { type: Boolean, default: true },
   isPinned: { type: Boolean, default: false },
   
-  location: String,
   editedAt: Date,
 }, {
   timestamps: true,

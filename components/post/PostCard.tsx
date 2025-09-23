@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface PostCardProps {
-  id: string
-  user: {
+  id?: string
+  user?: {
     name: string
     username: string
     avatar?: string
@@ -25,7 +25,7 @@ interface PostCardProps {
 }
 
 export function PostCard({
-  user,
+  user = { name: 'Anonymous', username: 'anonymous' }, // Add default values for user
   content,
   timestamp,
   likes = 0,
@@ -83,19 +83,21 @@ export function PostCard({
     <div className="bg-transparent p-0 hover:bg-gray-900/30 transition-colors">
       <div className="flex space-x-3">
         <Avatar className="w-10 h-10 ring-1 ring-gray-700">
-          <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback className="bg-gray-800 text-white">{user.name.charAt(0)}</AvatarFallback>
+          <AvatarImage src={user?.avatar || ''} alt={user?.name || 'User'} />
+          <AvatarFallback className="bg-gray-800 text-white">
+            {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+          </AvatarFallback>
         </Avatar>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <span className="font-semibold text-white">{user.name}</span>
-            {user.verified && (
+            <span className="font-semibold text-white">{user?.name || 'Anonymous'}</span>
+            {user?.verified && (
               <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs">✓</span>
               </div>
             )}
-            <span className="text-gray-400">@{user.username}</span>
+            <span className="text-gray-400">@{user?.username || 'anonymous'}</span>
             <span className="text-gray-500">·</span>
             <span className="text-gray-400">{timestamp}</span>
             <Button variant="ghost" size="icon" className="ml-auto w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-800">

@@ -46,7 +46,9 @@ A modern social media platform built with Next.js, featuring OAuth authenticatio
 
 ### Backend & Database
 - **Authentication**: NextAuth.js v4
-- **Database**: MongoDB Atlas with Mongoose
+- **Database**: MongoDB Atlas with Mongoose 
+  - [Setup Guide](./docs/mongodb-atlas-setup.md)
+  - [Troubleshooting Guide](./docs/mongodb-troubleshooting.md)
 - **API Routes**: Next.js API routes
 - **Validation**: Zod schema validation
 

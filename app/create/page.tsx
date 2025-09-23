@@ -63,24 +63,34 @@ export default function CreatePage() {
     try {
       const formData = new FormData()
       formData.append('content', content)
-      formData.append('location', location)
+      formData.append('location', location || '')
       
+      // Add all images to form data if they exist
       images.forEach((image, index) => {
         formData.append('images', image.file)
       })
+
+      console.log('Sending post with content:', content)
+      console.log('Images count:', images.length)
 
       const response = await fetch('/api/posts/create', {
         method: 'POST',
         body: formData,
       })
 
+      const responseData = await response.json().catch(() => ({}))
+
       if (response.ok) {
+        console.log('Post created successfully:', responseData)
         router.push('/')
       } else {
-        console.error('Failed to create post')
+        const errorMessage = responseData.error || response.statusText || 'Unknown error'
+        console.error('Failed to create post:', errorMessage)
+        alert('Failed to create post: ' + errorMessage)
       }
     } catch (error) {
       console.error('Error creating post:', error)
+      alert('An error occurred while creating your post. Please try again.')
     } finally {
       setIsPosting(false)
     }

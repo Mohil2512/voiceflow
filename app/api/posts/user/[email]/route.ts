@@ -39,16 +39,21 @@ export async function GET(
       content: post.content || '',
       location: post.location || null,
       images: post.images || [],
-      author: {
+      user: {
         name: post.author?.name || 'Unknown',
-        email: post.author?.email || '',
-        image: post.author?.image || '/placeholder.svg'
+        username: post.author?.email?.split('@')[0] || 'anonymous',
+        avatar: post.author?.image || '/placeholder.svg',
+        verified: post.author?.verified || false,
       },
       createdAt: post.createdAt,
       timestamp: formatTimeAgo(post.createdAt),
       likes: post.likes || 0,
       replies: post.replies || 0,
-      reposts: post.reposts || 0
+      reposts: post.reposts || 0,
+      // Use the first image from the images array if available
+      image: post.images && post.images.length > 0 
+        ? `data:${post.images[0].type};base64,${post.images[0].data}` 
+        : null,
     }))
 
     return NextResponse.json({ posts: formattedPosts })

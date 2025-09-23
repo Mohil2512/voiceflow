@@ -3,13 +3,18 @@ import { NextRequest, NextResponse } from 'next/server'
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
-// Conditional import of database functions
+// Import database functions
 const getDatabases = async () => {
   if (!process.env.MONGODB_URI) {
-    throw new Error('Database not available')
+    throw new Error('MongoDB URI environment variable is not set')
   }
-  const { getDatabases: getDB } = await import('@/lib/database/mongodb')
-  return getDB()
+  try {
+    const { getDatabases: getDB } = await import('@/lib/database/mongodb')
+    return await getDB()
+  } catch (error) {
+    console.error('Database connection error:', error)
+    throw new Error('Failed to connect to MongoDB Atlas: ' + (error instanceof Error ? error.message : 'Unknown error'))
+  }
 }
 
 function formatTimestamp(date: Date | string): string {
@@ -27,25 +32,9 @@ function formatTimestamp(date: Date | string): string {
   return postDate.toLocaleDateString()
 }
 
-// Mock data for when database is unavailable
-const getMockPosts = () => [
-  {
-    id: 'mock-1',
-    user: {
-      name: 'Demo User',
-      email: 'demo@example.com',
-      image: '/placeholder.svg'
-    },
-    content: 'Welcome to Voiceflow! This is a demo post while the database is initializing.',
-    timestamp: formatTimestamp(new Date()),
-    likes: 0,
-    comments: 0
-  }
-]
-
 export async function GET(request: NextRequest) {
   try {
-    // Try to connect to database
+    // Connect to database - MongoDB Atlas
     const { activities } = await getDatabases()
     
     // Get posts from database, sorted by creation date (newest first)
@@ -59,8 +48,8 @@ export async function GET(request: NextRequest) {
       id: post._id.toString(),
       user: {
         name: post.author?.name || 'Anonymous',
-        username: post.author?.username || 'anonymous',
-        avatar: post.author?.avatar || '/placeholder.svg',
+        username: post.author?.email?.split('@')[0] || 'anonymous', // Use email prefix as username
+        avatar: post.author?.image || '/placeholder.svg',
         verified: post.author?.verified || false,
       },
       content: post.content || '',
@@ -68,21 +57,23 @@ export async function GET(request: NextRequest) {
       likes: post.likes || 0,
       replies: post.replies || 0,
       reposts: post.reposts || 0,
-      image: post.image || null,
+      // Use the first image from the images array if available
+      image: post.images && post.images.length > 0 
+        ? `data:${post.images[0].type};base64,${post.images[0].data}` 
+        : null,
     }))
     
     return NextResponse.json({ posts: formattedPosts })
   } catch (error) {
-    console.error('Error fetching posts:', error)
+    console.error('Error fetching posts from MongoDB Atlas:', error)
     
-    // Return mock data when database is not available
-    // This allows the app to function even without database connection
+    // Return proper error status with detailed error message
     return NextResponse.json(
       { 
-        posts: getMockPosts(),
-        message: 'Using demo data - database temporarily unavailable.'
+        error: 'Failed to fetch posts from MongoDB Atlas',
+        message: error instanceof Error ? error.message : 'Unknown database error'
       },
-      { status: 200 } // Return 200 instead of 500 to avoid frontend errors
+      { status: 500 }
     )
   }
 }

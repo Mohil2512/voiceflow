@@ -132,17 +132,8 @@ export default function HomePage() {
             ) : posts && posts.length > 0 ? (
               posts.map((post: any) => (
                 <PostCard 
-                  key={post._id || post.id} 
-                  id={post._id || post.id}
-                  user={post.user}
-                  content={post.content}
-                  timestamp={post.createdAt || post.timestamp}
-                  likes={post.likesCount || post.likes || 0}
-                  replies={post.commentsCount || post.replies || 0}
-                  reposts={post.repostsCount || post.reposts || 0}
-                  image={post.image}
-                  isLiked={post.isLiked || false}
-                  isReposted={post.isReposted || false}
+                  key={post._id} 
+                  post={post}
                 />
               ))
             ) : (

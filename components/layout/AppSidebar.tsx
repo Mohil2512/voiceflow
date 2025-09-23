@@ -19,6 +19,7 @@ import {
   Monitor
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { CreatePostModal } from "@/components/post/CreatePostModal"
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -35,10 +36,6 @@ export function AppSidebar() {
     signOut({ callbackUrl: "/" })
   }
 
-  const handleThemeToggle = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
-  }
-
   const mainSidebarItems = [
     {
       title: "Home",
@@ -52,12 +49,16 @@ export function AppSidebar() {
     },
     {
       title: "Create",
-      url: "/create",
+      url: "#",
       icon: PlusSquare,
+      onClick: () => {
+        // This will be handled by the CreatePostModal component
+        // The modal is opened by a different trigger
+      },
     },
     {
-      title: "Activity",
-      url: "/activity",
+      title: "Notification",
+      url: "/notification",
       icon: Heart,
     },
     {
@@ -75,10 +76,27 @@ export function AppSidebar() {
 
   const moreMenuItems = [
     {
-      title: theme === "dark" ? "Light Mode" : "Dark Mode",
+      title: theme === "dark" ? "Dark Mode" : "Light Mode",
       url: "#",
       icon: theme === "dark" ? Sun : Moon,
-      onClick: handleThemeToggle,
+      onClick: () => {
+        // Toggle between dark and light modes only
+        const newTheme = theme === "dark" ? "light" : "dark";
+        setTheme(newTheme);
+        
+        // Force update the DOM directly for immediate visual feedback - fixed reversed themes
+        if (newTheme === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.classList.remove("light");
+          document.documentElement.style.colorScheme = "dark";
+        } else {
+          document.documentElement.classList.add("light");
+          document.documentElement.classList.remove("dark");
+          document.documentElement.style.colorScheme = "light";
+        }
+        
+        console.log("Changed theme to", newTheme, "from", theme);
+      },
     },
     ...(session ? [{
       title: "Log Out",
@@ -117,11 +135,47 @@ export function AppSidebar() {
         <nav className="space-y-1">
           {mainSidebarItems.map((item) => {
             const isActive = pathname === item.url
-            return (
+            
+            // Special case for Create button
+            if (item.title === "Create") {
+              return (
+                <CreatePostModal 
+                  key={item.title}
+                  trigger={
+                    <button
+                      className={cn(
+                        "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full",
+                        "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )}
+                    >
+                      <item.icon className="h-7 w-7 stroke-1" />
+                      <span className="text-xl font-normal">{item.title}</span>
+                    </button>
+                  }
+                />
+              )
+            }
+            
+            return item.onClick ? (
+              // Use button for items with onClick handlers (like More)
+              <button
+                key={item.title}
+                onClick={item.onClick}
+                className={cn(
+                  "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full",
+                  isActive
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                <item.icon className={cn("h-7 w-7", isActive ? "stroke-2" : "stroke-1")} />
+                <span className="text-xl font-normal">{item.title}</span>
+              </button>
+            ) : (
+              // Use Link for navigation items
               <Link
                 key={item.title}
                 href={item.url}
-                onClick={item.onClick}
                 className={cn(
                   "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full",
                   isActive
@@ -140,15 +194,14 @@ export function AppSidebar() {
         {showMore && (
           <div className="mt-2 space-y-1 ml-4 border-l-2 border-border pl-4">
             {moreMenuItems.map((item) => (
-              <Link
+              <button
                 key={item.title}
-                href={item.url}
                 onClick={item.onClick}
                 className="flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
                 <item.icon className="h-6 w-6" />
                 <span className="text-lg font-normal">{item.title}</span>
-              </Link>
+              </button>
             ))}
           </div>
         )}

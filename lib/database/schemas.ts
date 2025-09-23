@@ -104,8 +104,7 @@ export interface Post {
   allowComments: boolean;
   isPinned: boolean;
   
-  // Location & Context
-  location?: string;
+  // No location field - removed
   
   // Timestamps
   createdAt: Date;
