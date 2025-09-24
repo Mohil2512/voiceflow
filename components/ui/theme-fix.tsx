@@ -34,9 +34,54 @@ export default function ThemeFix() {
         color: black !important;
       }
       
+      html.light .bg-card {
+        background-color: white !important;
+      }
+      
+      html.light .text-foreground {
+        color: black !important;
+      }
+      
+      html.light .text-muted-foreground {
+        color: hsl(0, 0%, 45%) !important;
+      }
+      
+      html.light .border-border {
+        border-color: hsl(0, 0%, 90%) !important;
+      }
+      
+      html.light .bg-background {
+        background-color: white !important;
+      }
+      
+      /* Fix for post cards */
+      html.light .hover\:bg-accent\/30:hover {
+        background-color: rgba(246, 246, 246, 0.3) !important;
+      }
+      
+      /* Fix for buttons in post cards */
+      html.light .hover\:text-red-500:hover {
+        color: #ef4444 !important;
+      }
+      
+      html.light .hover\:text-primary:hover {
+        color: black !important;
+      }
+      
+      html.light .hover\:text-green-500:hover {
+        color: #22c55e !important;
+      }
+      
       html.dark body {
         background-color: black !important;
         color: white !important;
+      }
+      
+      /* Fix for posts in light mode */
+      html.light [data-theme="light"] .post-card {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid hsl(0, 0%, 90%) !important;
       }
     `}</style>
   )

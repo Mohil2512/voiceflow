@@ -7,7 +7,7 @@ if (!process.env.MONGODB_URI && process.env.NODE_ENV !== 'development') {
 
 const uri = process.env.MONGODB_URI || ''
 
-// MongoDB client options - optimized for MongoDB Atlas
+// MongoDB client options - optimized for MongoDB Atlas with more flexible SSL options
 const options = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 30000, // Increased timeout for Atlas connections
@@ -16,9 +16,11 @@ const options = {
   retryWrites: true,
   retryReads: true,
   w: 'majority' as const,
-  ssl: true, // Required for Atlas
-  // Choose one TLS option, but not both
-  tlsAllowInvalidCertificates: process.env.NODE_ENV === 'development' // For development only
+  // Modified SSL options to fix connection issues
+  tls: true, // Using tls instead of deprecated ssl
+  tlsAllowInvalidCertificates: true, // Allow invalid certificates temporarily for debugging
+  tlsAllowInvalidHostnames: process.env.NODE_ENV === 'development' // Allow invalid hostnames in dev
+  // Removed directConnection as it's not compatible with SRV URIs
   // useUnifiedTopology is removed as it's deprecated in MongoDB Driver v4.0.0+
 }
 

@@ -80,36 +80,36 @@ export function PostCard({
   }
 
   return (
-    <div className="bg-transparent p-0 hover:bg-gray-900/30 transition-colors">
+    <div className="border-b border-border p-4 hover:bg-accent/30 transition-colors">
       <div className="flex space-x-3">
-        <Avatar className="w-10 h-10 ring-1 ring-gray-700">
+        <Avatar className="w-10 h-10 ring-1 ring-border">
           <AvatarImage src={user?.avatar || ''} alt={user?.name || 'User'} />
-          <AvatarFallback className="bg-gray-800 text-white">
+          <AvatarFallback className="bg-muted text-foreground">
             {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
           </AvatarFallback>
         </Avatar>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <span className="font-semibold text-white">{user?.name || 'Anonymous'}</span>
+            <span className="font-semibold text-foreground">{user?.name || 'Anonymous'}</span>
             {user?.verified && (
-              <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">✓</span>
+              <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                <span className="text-primary-foreground text-xs">✓</span>
               </div>
             )}
-            <span className="text-gray-400">@{user?.username || 'anonymous'}</span>
-            <span className="text-gray-500">·</span>
-            <span className="text-gray-400">{timestamp}</span>
-            <Button variant="ghost" size="icon" className="ml-auto w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-800">
+            <span className="text-muted-foreground">@{user?.username || 'anonymous'}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">{timestamp}</span>
+            <Button variant="ghost" size="icon" className="ml-auto w-8 h-8 text-muted-foreground hover:text-foreground hover:bg-accent">
               <MoreHorizontal className="w-4 h-4" />
             </Button>
           </div>
           
           <div className="mt-1">
-            <p className="text-white whitespace-pre-wrap leading-relaxed">{content}</p>
+            <p className="text-foreground whitespace-pre-wrap leading-relaxed">{content}</p>
             
             {image && (
-              <div className="mt-3 rounded-xl overflow-hidden border border-gray-700">
+              <div className="mt-3 rounded-xl overflow-hidden border border-border">
                 <img
                   src={image}
                   alt="Post content"
@@ -123,7 +123,7 @@ export function PostCard({
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center space-x-2 text-gray-400 hover:text-red-400 p-0 h-auto transition-colors"
+              className="flex items-center space-x-2 text-muted-foreground hover:text-red-500 p-0 h-auto transition-colors"
               onClick={handleLike}
             >
               <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
@@ -133,7 +133,7 @@ export function PostCard({
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center space-x-2 text-gray-400 hover:text-blue-400 p-0 h-auto transition-colors"
+              className="flex items-center space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
               onClick={handleReply}
             >
               <MessageCircle className="w-5 h-5" />
@@ -143,7 +143,7 @@ export function PostCard({
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center space-x-2 text-gray-400 hover:text-green-400 p-0 h-auto transition-colors"
+              className="flex items-center space-x-2 text-muted-foreground hover:text-green-500 p-0 h-auto transition-colors"
               onClick={handleRepost}
             >
               <Repeat2 className={`w-5 h-5 ${reposted ? 'text-green-500' : ''}`} />
@@ -153,7 +153,7 @@ export function PostCard({
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center space-x-2 text-gray-400 hover:text-blue-400 p-0 h-auto transition-colors"
+              className="flex items-center space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
               onClick={handleShare}
             >
               <Send className="w-5 h-5" />

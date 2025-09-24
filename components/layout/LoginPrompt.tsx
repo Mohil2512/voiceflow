@@ -36,21 +36,21 @@ export function LoginPrompt() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center relative overflow-hidden">
       {/* Background Pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-muted to-background"></div>
       
       {/* Login Card - Centered Modal Style */}
       <div className="relative z-10 w-full max-w-md mx-4">
-        <Card className="bg-gray-900 border-gray-700">
+        <Card>
           <CardContent className="p-8 space-y-6">
             {/* Logo */}
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto bg-white rounded-full flex items-center justify-center mb-4">
-                <span className="text-black text-2xl font-bold">@</span>
+              <div className="w-16 h-16 mx-auto bg-primary rounded-full flex items-center justify-center mb-4">
+                <span className="text-primary-foreground text-2xl font-bold">@</span>
               </div>
               <h1 className="text-2xl font-bold">Log in or sign up for Voiceflow</h1>
-              <p className="text-gray-400 mt-2">
+              <p className="text-muted-foreground mt-2">
                 See what people are talking about and join the conversation.
               </p>
             </div>
@@ -60,8 +60,9 @@ export function LoginPrompt() {
               <Button
                 onClick={() => handleOAuthSignIn('google')}
                 disabled={isLoading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                className="w-full py-3"
                 size="lg"
+                variant="default"
               >
                 <Mail className="h-5 w-5 mr-2" />
                 Continue with Google
@@ -70,8 +71,9 @@ export function LoginPrompt() {
               <Button
                 onClick={() => handleOAuthSignIn('github')}
                 disabled={isLoading}
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3"
+                className="w-full py-3"
                 size="lg"
+                variant="secondary"
               >
                 <Github className="h-5 w-5 mr-2" />
                 Continue with GitHub
@@ -81,10 +83,10 @@ export function LoginPrompt() {
             {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-700"></div>
+                <div className="w-full border-t border-border"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-gray-900 px-4 text-gray-400">or</span>
+                <span className="bg-card px-4 text-muted-foreground">or</span>
               </div>
             </div>
 
@@ -93,7 +95,7 @@ export function LoginPrompt() {
               <Link href="/auth/signin" className="w-full" onClick={handleManualSignInRedirect}>
                 <Button
                   variant="outline"
-                  className="w-full border-gray-600 text-white hover:bg-gray-800 py-3"
+                  className="w-full py-3"
                   size="lg"
                   disabled={isLoading}
                 >
@@ -105,7 +107,7 @@ export function LoginPrompt() {
               <Link href="/auth/signup" className="w-full" onClick={handleManualSignInRedirect}>
                 <Button
                   variant="outline"
-                  className="w-full border-gray-600 text-white hover:bg-gray-800 py-3"
+                  className="w-full py-3"
                   size="lg"
                   disabled={isLoading}
                 >
@@ -116,14 +118,14 @@ export function LoginPrompt() {
             </div>
 
             {/* Footer */}
-            <div className="text-center text-xs text-gray-500">
+            <div className="text-center text-xs text-muted-foreground">
               <p>
                 By continuing, you agree to our{' '}
-                <Link href="/terms" className="text-blue-400 hover:underline">
+                <Link href="/terms" className="text-primary hover:underline">
                   Terms of Service
                 </Link>{' '}
                 and{' '}
-                <Link href="/privacy" className="text-blue-400 hover:underline">
+                <Link href="/privacy" className="text-primary hover:underline">
                   Privacy Policy
                 </Link>
               </p>

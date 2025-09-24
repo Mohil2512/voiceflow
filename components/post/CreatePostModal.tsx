@@ -162,7 +162,7 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
                     />
                     <button
                       onClick={() => removeImage(image.id)}
-                      className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 bg-background/60 text-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="h-4 w-4" />
                     </button>
