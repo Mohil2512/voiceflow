@@ -120,9 +120,39 @@ export function useDataWithCache<T>(
     }
   };
 
+  // Add a retry mechanism
+  const retryFetch = async (retries = 2, delay = 1000) => {
+    try {
+      await fetchData();
+    } catch (err) {
+      if (retries > 0) {
+        console.log(`Retrying fetch for ${key}, ${retries} retries left`);
+        setTimeout(() => retryFetch(retries - 1, delay * 1.5), delay);
+      }
+    }
+  };
+
   useEffect(() => {
     if (enabled) {
-      fetchData();
+      // Try to get from cache immediately to prevent unnecessary loading state
+      const cachedData = getFromCache();
+      if (cachedData && !forceRefresh) {
+        console.log(`Using cached data for ${key} (immediate)`);
+        setData(cachedData);
+        // Still fetch in background if needed, but without showing loading state
+        if (navigator.onLine) {
+          setTimeout(() => {
+            fetchFunction().then(freshData => {
+              saveToCache(freshData);
+              setData(freshData);
+            }).catch(err => {
+              console.error(`Background refresh error for ${key}:`, err);
+            });
+          }, 2000);
+        }
+      } else {
+        retryFetch();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled, forceRefresh]);

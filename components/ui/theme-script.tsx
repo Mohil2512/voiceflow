@@ -9,16 +9,15 @@ export default function ThemeScript() {
   const { theme, setTheme } = useTheme()
   
   useEffect(() => {
-    setMounted(true)
-    
-    // Convert any system theme to dark on initialization
-    if (localStorage.getItem('voiceflow-theme') === 'system') {
-      localStorage.setItem('voiceflow-theme', 'dark')
-      setTheme('dark')
-    }
-    
-    // Fix theme on page load - fix reversed themes
-    const applyTheme = () => {
+    // Apply theme immediately before setting mounted to true
+    try {
+      // Convert any system theme to dark on initialization
+      if (localStorage.getItem('voiceflow-theme') === 'system') {
+        localStorage.setItem('voiceflow-theme', 'dark')
+        setTheme('dark')
+      }
+      
+      // Fix theme on page load - fix reversed themes
       const storedTheme = localStorage.getItem('voiceflow-theme')
       
       if (storedTheme === 'light') {
@@ -31,9 +30,12 @@ export default function ThemeScript() {
         document.documentElement.classList.remove('light')
         document.documentElement.style.colorScheme = 'dark'
       }
+    } catch (error) {
+      console.error("Error applying theme:", error)
     }
     
-    applyTheme()
+    // Set mounted to true AFTER applying the theme
+    setMounted(true)
     
     // Listen for theme changes
     const observer = new MutationObserver((mutations) => {
