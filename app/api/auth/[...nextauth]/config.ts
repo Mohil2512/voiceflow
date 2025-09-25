@@ -6,14 +6,27 @@
 
 import type { NextAuthOptions } from "next-auth";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import clientPromise from '@/lib/mongodb';
+import clientPromise from '@/lib/mongodb-safe';
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
+
+// Safe creation of MongoDB adapter that works in both development and production
+const getMongoDBAdapter = () => {
+  // Only use adapter when we have a valid MongoDB URI
+  if (process.env.MONGODB_URI) {
+    try {
+      return MongoDBAdapter(clientPromise);
+    } catch (error) {
+      console.warn("Failed to create MongoDB adapter:", error);
+    }
+  }
+  return undefined;
+};
 
 export const authOptions: NextAuthOptions = {
   // Configure adapters and providers here instead of directly in route.ts
   // This helps avoid server-side rendering issues
-  adapter: MongoDBAdapter(clientPromise),
+  adapter: getMongoDBAdapter(),
   
   providers: [
     GoogleProvider({
