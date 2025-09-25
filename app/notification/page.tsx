@@ -1,12 +1,15 @@
 "use client"
 
-import { useSession } from 'next-auth/react'
+// Import statement moved to top and organized for better readability
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Layout } from "@/components/layout/Layout"
-import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from 'next/link'
+// Add dynamic import for client-side only code
+import dynamic from 'next/dynamic'
 
 interface Notification {
   id: string;
@@ -22,6 +25,7 @@ interface Notification {
 }
 
 export default function NotificationPage() {
+  // Get session client-side only
   const { data: session, status } = useSession()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
@@ -37,7 +41,10 @@ export default function NotificationPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       console.log("Notification page: User not authenticated, redirecting to sign in");
-      localStorage.setItem('redirectAfterLogin', '/notification');
+      // Use safe localStorage access
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('redirectAfterLogin', '/notification');
+      }
       router.push('/auth/signin?callbackUrl=/notification');
     }
   }, [status, router]);

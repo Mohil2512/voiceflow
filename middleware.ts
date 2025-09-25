@@ -1,4 +1,8 @@
 import { withAuth } from "next-auth/middleware"
+import { validateEnv } from "./lib/validateEnv"
+
+// Validate environment variables during initialization
+validateEnv();
 
 export default withAuth(
   function middleware(req) {
@@ -9,6 +13,12 @@ export default withAuth(
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl
+        
+        // Special handling for SSR safety
+        if (process.env.VERCEL_ENV === 'production' && pathname === '/Notification') {
+          // Allow access but we'll handle the redirect client-side
+          return true
+        }
         
         // Allow access to auth pages
         if (pathname.startsWith('/auth/')) {
@@ -51,7 +61,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (images, etc.)
+     * - Notification route which we handle separately for SSR safety
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.).*)',
+    '/((?!_next/static|_next/image|favicon.ico|Notification|.*\\.).*)',
   ],
 }

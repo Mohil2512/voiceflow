@@ -1,30 +1,27 @@
-"use client"
-
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Layout } from "@/components/layout/Layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 
-interface Notification {
-  id: string;
-  type: 'follow_request' | 'follow_accepted' | 'new_follower' | 'new_post';
-  fromUser: {
-    name: string;
-    username: string;
-    avatar?: string;
-  };
-  createdAt: string;
-  read: boolean;
-}
-
-export default function Notification() {
+export default function NotificationRedirect() {
   const router = useRouter();
-  const { data: session, status } = useSession();
-  const [mounted, setMounted] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Redirect to App Router page
+  useEffect(() => {
+    router.replace('/notification');
+  }, [router]);
+  
+  // Simple loading indicator
+  return (
+    <Layout>
+      <div className="max-w-2xl mx-auto py-8">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+          <p className="ml-2">Redirecting to new notifications page...</p>
+        </div>
+      </div>
+    </Layout>
+  );
+}
 
   // Set mounted state
   useEffect(() => {

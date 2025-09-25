@@ -183,8 +183,10 @@ const handler = NextAuth({
         token = { ...token, ...session.user }
       }
 
-      // Skip database operations during build time
-      if (!process.env.MONGODB_URI && process.env.NODE_ENV === 'production') {
+      // Skip database operations during build time or SSR
+      if (!process.env.MONGODB_URI || 
+          process.env.NODE_ENV === 'production' || 
+          typeof window === 'undefined') {
         return token
       }
 
