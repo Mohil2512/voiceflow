@@ -32,15 +32,53 @@ function formatTimestamp(date: Date | string): string {
   return postDate.toLocaleDateString()
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { identifier: string } }
+) {
+  const identifier = params.identifier
+  
+  if (!identifier) {
+    return NextResponse.json(
+      { error: 'User identifier parameter is required' },
+      { status: 400 }
+    )
+  }
+  
   try {
     // Connect to database - MongoDB Atlas
-    const { activities } = await getDatabases()
+    const { activities, auth } = await getDatabases()
+    
+    // Try to determine if this is a username or email
+    const isEmail = identifier.includes('@')
+    
+    let query = {}
+    
+    if (isEmail) {
+      // Direct search by email
+      query = { 'author.email': identifier }
+    } else {
+      // First try to find the user by username to get email
+      const user = await auth.collection('users').findOne({ 
+        $or: [
+          { username: identifier },
+          { username: { $regex: new RegExp(`^${identifier}$`, 'i') } }
+        ]
+      })
+      
+      if (user) {
+        // Use the email from the found user
+        query = { 'author.email': user.email }
+      } else {
+        // Fallback to direct username search
+        query = { 'author.username': identifier }
+      }
+    }
     
     // Get posts from database, sorted by creation date (newest first)
-    const posts = await activities.collection('posts').find({})
+    const posts = await activities.collection('posts').find(query)
       .sort({ createdAt: -1 })
-      .limit(20) // Limit to 20 posts for performance
+      .limit(50)
       .toArray()
     
     // Transform posts to match frontend format
@@ -48,7 +86,7 @@ export async function GET(request: NextRequest) {
       id: post._id.toString(),
       user: {
         name: post.author?.name || 'Anonymous',
-        username: post.author?.username || post.author?.email?.split('@')[0] || 'anonymous', // Use actual username if available
+        username: post.author?.username || post.author?.email?.split('@')[0] || 'anonymous',
         avatar: post.author?.image || '/placeholder.svg',
         verified: post.author?.verified || false,
       },
@@ -65,12 +103,11 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({ posts: formattedPosts })
   } catch (error) {
-    console.error('Error fetching posts from MongoDB Atlas:', error)
+    console.error('Error fetching user posts from MongoDB Atlas:', error)
     
-    // Return proper error status with detailed error message
     return NextResponse.json(
       { 
-        error: 'Failed to fetch posts from MongoDB Atlas',
+        error: 'Failed to fetch user posts',
         message: error instanceof Error ? error.message : 'Unknown database error'
       },
       { status: 500 }

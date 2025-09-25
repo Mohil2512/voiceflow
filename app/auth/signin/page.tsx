@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -22,6 +22,17 @@ export default function SignInPage() {
     password: ''
   })
   const router = useRouter()
+  const [callbackUrl, setCallbackUrl] = useState('')
+  
+  // Get callbackUrl from URL parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const urlCallbackUrl = params.get('callbackUrl')
+    if (urlCallbackUrl) {
+      setCallbackUrl(urlCallbackUrl)
+      console.log('Found callback URL in params:', urlCallbackUrl)
+    }
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -49,11 +60,12 @@ export default function SignInPage() {
         // Check if profile is complete
         const session = await getSession()
         
-        // Check for redirect URL
-        const redirectUrl = localStorage.getItem('redirectAfterLogin')
-        if (redirectUrl) {
+        // Check for redirect URL - prioritize URL param over localStorage
+        const urlCallbackUrl = callbackUrl || localStorage.getItem('redirectAfterLogin')
+        if (urlCallbackUrl) {
           localStorage.removeItem('redirectAfterLogin')
-          router.push(redirectUrl)
+          console.log('Redirecting to:', urlCallbackUrl)
+          router.push(urlCallbackUrl)
         } else if (!session?.user?.profileComplete) {
           router.push('/auth/complete-profile')
         } else {
@@ -76,13 +88,13 @@ export default function SignInPage() {
       console.log(`Attempting ${provider} sign in...`)
       
       // Check for redirect URL and add it to the callback URL
-      const redirectUrl = localStorage.getItem('redirectAfterLogin')
-      const callbackUrl = redirectUrl || '/'
+      const redirectUrl = callbackUrl || localStorage.getItem('redirectAfterLogin')
+      const finalCallbackUrl = redirectUrl || '/'
       
-      console.log(`Callback URL: ${callbackUrl}`)
+      console.log(`Callback URL: ${finalCallbackUrl}`)
       
       const result = await signIn(provider, { 
-        callbackUrl,
+        callbackUrl: finalCallbackUrl,
         redirect: false
       })
       

@@ -72,6 +72,36 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
       console.log('Sending post with content:', content)
       console.log('Images count:', images.length)
 
+      // Create a temporary local post to display immediately
+      const tempPost = {
+        id: `temp-${Date.now()}`,
+        content,
+        user: {
+          name: session?.user?.name || 'You',
+          username: session?.user?.username || session?.user?.email?.split('@')[0] || 'you',
+          avatar: session?.user?.image || '',
+        },
+        timestamp: 'Just now',
+        likes: 0,
+        replies: 0,
+        reposts: 0,
+        createdAt: new Date().toISOString()
+      }
+
+      // Add the temporary post to local storage for immediate display
+      try {
+        const localPosts = localStorage.getItem('voiceflow-home-posts') || '{"data":[],"timestamp":0}'
+        const parsedCache = JSON.parse(localPosts)
+        const updatedPosts = [tempPost, ...(parsedCache.data || [])]
+        const newCache = {
+          data: updatedPosts,
+          timestamp: Date.now()
+        }
+        localStorage.setItem('voiceflow-home-posts', JSON.stringify(newCache))
+      } catch (e) {
+        console.error('Error updating local cache:', e)
+      }
+
       const response = await fetch('/api/posts/create', {
         method: 'POST',
         body: formData,
@@ -83,6 +113,10 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
         console.log('Post created successfully:', responseData)
         setIsOpen(false)
         resetForm()
+        
+        // Clear cache to force refresh on next data fetch
+        localStorage.removeItem('voiceflow-home-posts')
+        
         if (onPostCreated) {
           onPostCreated()
         } else {

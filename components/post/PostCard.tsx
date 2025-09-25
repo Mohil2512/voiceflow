@@ -2,9 +2,11 @@
 
 import { useState } from "react"
 import { useSession } from "next-auth/react"
-import { Heart, MessageCircle, Repeat2, Send, MoreHorizontal } from "lucide-react"
+import { Heart, MessageCircle, Repeat2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface PostCardProps {
   id?: string
@@ -25,6 +27,7 @@ interface PostCardProps {
 }
 
 export function PostCard({
+  id,
   user = { name: 'Anonymous', username: 'anonymous' }, // Add default values for user
   content,
   timestamp,
@@ -36,32 +39,74 @@ export function PostCard({
   isReposted = false,
 }: PostCardProps) {
   const { data: session } = useSession()
+  const router = useRouter()
   const [liked, setLiked] = useState(isLiked)
   const [reposted, setReposted] = useState(isReposted)
   const [likesCount, setLikesCount] = useState(likes)
   const [repostsCount, setRepostsCount] = useState(reposts)
+  // Ensure username is properly formatted and prioritize proper username over email
+  const displayUsername = user?.username || 'anonymous'
 
   const requireAuth = (action: () => void) => {
     if (!session) {
       // Store current URL for redirect after login
       localStorage.setItem('redirectAfterLogin', window.location.pathname)
-      window.location.href = '/auth/signin'
+      // Redirect to sign-in page
+      router.push('/auth/signin')
       return
     }
     action()
   }
 
-  const handleLike = () => {
-    requireAuth(() => {
-      setLiked(!liked)
-      setLikesCount(liked ? likesCount - 1 : likesCount + 1)
+  const handleLike = async () => {
+    requireAuth(async () => {
+      try {
+        setLiked(!liked)
+        setLikesCount(liked ? likesCount - 1 : likesCount + 1)
+        
+        // Call API to update like status
+        await fetch('/api/posts/like', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ postId: id, liked: !liked }),
+        })
+      } catch (error) {
+        console.error('Error updating like status:', error)
+        // Revert UI state if API call fails
+        setLiked(liked)
+        setLikesCount(likesCount)
+      }
     })
   }
 
-  const handleRepost = () => {
-    requireAuth(() => {
-      setReposted(!reposted)
-      setRepostsCount(reposted ? repostsCount - 1 : repostsCount + 1)
+  const handleRepost = async () => {
+    requireAuth(async () => {
+      try {
+        console.log(`Toggling repost for post ${id}, current state:`, reposted);
+        const newRepostedState = !reposted;
+        setReposted(newRepostedState)
+        setRepostsCount(reposted ? repostsCount - 1 : repostsCount + 1)
+        
+        // Call API to update repost status
+        console.log(`Sending repost request to API, postId: ${id}, reposted: ${newRepostedState}`);
+        const response = await fetch('/api/posts/repost', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ postId: id, reposted: newRepostedState }),
+        })
+        
+        const data = await response.json();
+        console.log('Repost API response:', data);
+      } catch (error) {
+        console.error('Error updating repost status:', error)
+        // Revert UI state if API call fails
+        setReposted(reposted)
+        setRepostsCount(repostsCount)
+      }
     })
   }
 
@@ -71,38 +116,53 @@ export function PostCard({
       console.log('Reply functionality to be implemented')
     })
   }
-
-  const handleShare = () => {
-    requireAuth(() => {
-      // TODO: Open share modal
-      console.log('Share functionality to be implemented')
-    })
+  
+  const handleUserClick = () => {
+    if (!displayUsername) return;
+    
+    // Check if this is the current user's post
+    if (session?.user?.email === user?.email || session?.user?.username === user?.username) {
+      // If it's the current user's own post, redirect to their profile page
+      router.push(`/profile`);
+    } else {
+      // Otherwise navigate to the specified user's profile
+      router.push(`/profile/${displayUsername}`);
+    }
   }
 
   return (
     <div className="border-b border-border p-4 hover:bg-accent/30 transition-colors">
       <div className="flex space-x-3">
-        <Avatar className="w-10 h-10 ring-1 ring-border">
-          <AvatarImage src={user?.avatar || ''} alt={user?.name || 'User'} />
-          <AvatarFallback className="bg-muted text-foreground">
-            {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
-          </AvatarFallback>
-        </Avatar>
+        <div onClick={handleUserClick} className="cursor-pointer">
+          <Avatar className="w-10 h-10 ring-1 ring-border hover:ring-primary transition-all">
+            <AvatarImage src={user?.avatar || ''} alt={user?.name || 'User'} />
+            <AvatarFallback className="bg-muted text-foreground">
+              {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+            </AvatarFallback>
+          </Avatar>
+        </div>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
-            <span className="font-semibold text-foreground">{user?.name || 'Anonymous'}</span>
+            <span 
+              onClick={handleUserClick}
+              className="font-semibold text-foreground hover:underline cursor-pointer"
+            >
+              {user?.name || 'Anonymous'}
+            </span>
             {user?.verified && (
               <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                 <span className="text-primary-foreground text-xs">✓</span>
               </div>
             )}
-            <span className="text-muted-foreground">@{user?.username || 'anonymous'}</span>
+            <span 
+              onClick={handleUserClick}
+              className="text-muted-foreground hover:underline cursor-pointer"
+            >
+              @{displayUsername}
+            </span>
             <span className="text-muted-foreground">·</span>
             <span className="text-muted-foreground">{timestamp}</span>
-            <Button variant="ghost" size="icon" className="ml-auto w-8 h-8 text-muted-foreground hover:text-foreground hover:bg-accent">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
           </div>
           
           <div className="mt-1">
@@ -119,45 +179,38 @@ export function PostCard({
             )}
           </div>
           
-          <div className="flex items-center space-x-8 mt-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center space-x-2 text-muted-foreground hover:text-red-500 p-0 h-auto transition-colors"
-              onClick={handleLike}
-            >
-              <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
-              {likesCount > 0 && <span className="text-sm">{likesCount}</span>}
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
-              onClick={handleReply}
-            >
-              <MessageCircle className="w-5 h-5" />
-              {replies > 0 && <span className="text-sm">{replies}</span>}
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center space-x-2 text-muted-foreground hover:text-green-500 p-0 h-auto transition-colors"
-              onClick={handleRepost}
-            >
-              <Repeat2 className={`w-5 h-5 ${reposted ? 'text-green-500' : ''}`} />
-              {repostsCount > 0 && <span className="text-sm">{repostsCount}</span>}
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
-              onClick={handleShare}
-            >
-              <Send className="w-5 h-5" />
-            </Button>
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center space-x-8">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-2 text-muted-foreground hover:text-red-500 p-0 h-auto transition-colors"
+                onClick={handleLike}
+              >
+                <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
+                {likesCount > 0 && <span className="text-sm">{likesCount}</span>}
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
+                onClick={handleReply}
+              >
+                <MessageCircle className="w-5 h-5" />
+                {replies > 0 && <span className="text-sm">{replies}</span>}
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-2 text-muted-foreground hover:text-green-500 p-0 h-auto transition-colors"
+                onClick={handleRepost}
+              >
+                <Repeat2 className={`w-5 h-5 ${reposted ? 'text-green-500' : ''}`} />
+                {repostsCount > 0 && <span className="text-sm">{repostsCount}</span>}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

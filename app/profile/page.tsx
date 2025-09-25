@@ -27,7 +27,7 @@ export default function ProfilePage() {
     setMounted(true)
   }, [])
   
-  // Cache user posts with our custom hook
+  // Cache user posts with our custom hook - ALWAYS call this regardless of authentication status
   const { 
     data: userPosts = [], 
     isLoading: loading, 
@@ -79,6 +79,58 @@ export default function ProfilePage() {
       enabled: !!session?.user?.email
     }
   )
+  
+  // Cache user reposts with our custom hook - ALWAYS call this regardless of authentication status
+  const { 
+    data: userReposts = [], 
+    isLoading: loadingReposts, 
+    refetch: refreshReposts 
+  } = useDataWithCache(
+    `profile-reposts-${session?.user?.email || "guest"}`,
+    async () => {
+      if (!session?.user?.email) return []
+      
+      try {
+        console.log("Fetching user reposts for:", session.user.email);
+        const response = await fetch(`/api/posts/reposts/${encodeURIComponent(session.user.email)}`)
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Received user reposts:", data);
+          
+          // If we have user's reposts from the API
+          if (data.reposts && Array.isArray(data.reposts)) {
+            // Ensure each repost has the required properties
+            const formattedReposts = data.reposts.map((repost: any) => ({
+              ...repost,
+              id: repost.id || repost._id,
+              isReposted: true,
+              user: repost.user || {
+                name: session.user.name || 'User',
+                username: session.user.username || session.user.email?.split('@')[0] || 'user',
+                avatar: session.user.image || "/placeholder.svg"
+              }
+            }));
+            console.log("Formatted reposts:", formattedReposts);
+            return formattedReposts;
+          }
+          
+          return [];
+        } else {
+          console.error("Error fetching user reposts:", response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('Error fetching user reposts:', error);
+        return [];
+      }
+    },
+    {
+      // Only force refresh when explicitly requested
+      forceRefresh: wasRefreshed,
+      // Only run query when we have a session
+      enabled: !!session?.user?.email
+    }
+  )
+  
   if (status === "loading" || !mounted) {
     return (
       <Layout>
@@ -92,6 +144,14 @@ export default function ProfilePage() {
 
   // Only show login prompt if explicitly unauthenticated
   if (status === "unauthenticated") {
+    // Save the current path for redirection after login
+    useEffect(() => {
+      if (status === "unauthenticated") {
+        localStorage.setItem('redirectAfterLogin', window.location.pathname)
+        router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`)
+      }
+    }, [status, router])
+    
     return (
       <Layout>
         <div className="max-w-2xl mx-auto bg-background text-foreground min-h-screen">
@@ -102,7 +162,7 @@ export default function ProfilePage() {
                   <User className="w-10 h-10 text-muted-foreground" />
                 </div>
                 <h1 className="text-2xl font-bold mb-2">Your Profile</h1>
-                <p className="text-muted-foreground mb-4">Sign in to view and manage your profile</p>
+                <p className="text-muted-foreground mb-4">Redirecting to sign in...</p>
               </div>
               <div className="space-y-3">
                 <Button 
@@ -185,9 +245,10 @@ export default function ProfilePage() {
           </div>
 
           <Tabs defaultValue="posts" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="posts">Posts</TabsTrigger>
               <TabsTrigger value="replies">Replies</TabsTrigger>
+              <TabsTrigger value="reposts">Reposts</TabsTrigger>
             </TabsList>
             
             <TabsContent value="posts" className="mt-6">
@@ -247,6 +308,60 @@ export default function ProfilePage() {
                 <h2 className="text-2xl font-bold text-muted-foreground mb-2">No replies yet</h2>
                 <p className="text-muted-foreground">When you reply to posts, they will show up here.</p>
               </div>
+            </TabsContent>
+            
+            <TabsContent value="reposts" className="mt-6">
+              {console.log('Rendering reposts tab, data:', userReposts?.length || 0, 'items', JSON.stringify(userReposts?.slice(0, 2)))}
+              {loadingReposts ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-foreground"></div>
+                  <p className="ml-2 text-muted-foreground">Loading reposts...</p>
+                </div>
+              ) : !userReposts || userReposts.length === 0 ? (
+                <div className="text-center py-16">
+                  <h2 className="text-2xl font-bold text-muted-foreground mb-2">No reposts yet</h2>
+                  <p className="text-muted-foreground">When you repost content, it will show up here.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {userReposts && userReposts.map((post: any, index: number) => {
+                    // Determine the user object depending on data structure
+                    const userObject = post.user || 
+                                      post.author || 
+                                      post.originalAuthor ||
+                                      { 
+                                        name: session?.user?.name || "User",
+                                        username: session?.user?.username || session?.user?.email?.split("@")[0] || "user",
+                                        avatar: session?.user?.image || "/placeholder.svg"
+                                      };
+                    
+                    // Ensure we have a valid ID for the key prop
+                    const postId = post.id || post._id || `repost-${index}-${Date.now()}`;
+                    
+                    console.log(`Rendering repost #${index}:`, postId, userObject);
+                    
+                    return (
+                      <div key={postId} className="py-4">
+                        <div className="pl-8 pb-1 text-sm text-muted-foreground">
+                          <span>You reposted</span>
+                        </div>
+                        <PostCard 
+                          id={postId}
+                          user={userObject}
+                          content={post.content || ""}
+                          timestamp={post.createdAt || post.timestamp || new Date().toISOString()}
+                          likes={post.likesCount || post.likes || 0}
+                          replies={post.commentsCount || post.replies || 0}
+                          reposts={post.repostsCount || post.reposts || 0}
+                          image={post.image}
+                          isLiked={post.isLiked || false}
+                          isReposted={true} // Always true since this is a repost
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

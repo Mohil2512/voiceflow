@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { useAppData } from '@/providers/data-provider'
 import { useDataWithCache } from '@/hooks/use-data-cache'
 import { RefreshButton } from '@/components/ui/refresh-button'
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function HomePage() {
   const { data: session, status } = useSession()
@@ -27,7 +28,7 @@ export default function HomePage() {
         const localPosts = localStorage.getItem('voiceflow_local_posts');
         let combinedPosts = [];
         
-        // Fetch from API
+        // Fetch from API with cache-busting timestamp
         const response = await fetch('/api/posts?timestamp=' + new Date().getTime());
         if (response.ok) {
           const data = await response.json();
@@ -61,6 +62,25 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true)
+    
+    // Add auto-refresh when page gets focus
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Clear cache and refetch posts when the page becomes visible again
+        localStorage.removeItem('voiceflow-home-posts')
+        refetch()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Auto-refresh once on page load
+    localStorage.removeItem('voiceflow-home-posts')
+    refetch()
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   if (status === 'loading' || !mounted) {
@@ -94,11 +114,12 @@ export default function HomePage() {
               <CreatePostModal
                 trigger={
                   <div className="flex gap-3 cursor-pointer w-full">
-                    <img 
-                      src={session.user?.image || '/placeholder.svg'} 
-                      alt="Your avatar"
-                      className="w-10 h-10 rounded-full"
-                    />
+                    <Avatar className="w-10 h-10 ring-1 ring-border">
+                      <AvatarImage src={session.user?.image || '/placeholder.svg'} alt="Your avatar" />
+                      <AvatarFallback className="bg-muted text-foreground">
+                        {session.user?.name ? session.user.name[0].toUpperCase() : '?'}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex-1">
                       <input 
                         type="text"

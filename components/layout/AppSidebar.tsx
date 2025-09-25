@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
+import { AppSidebarLink } from "./AppSidebarLink"
+import { NotificationLink } from "./NotificationLink"
 import { 
   Home, 
   Search, 
@@ -23,6 +25,7 @@ import { CreatePostModal } from "@/components/post/CreatePostModal"
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -60,11 +63,13 @@ export function AppSidebar() {
       title: "Notification",
       url: "/notification",
       icon: Heart,
+      requiresAuth: true
     },
     {
       title: "Profile",
       url: "/profile",
       icon: User,
+      requiresAuth: true
     },
     {
       title: "More",
@@ -156,6 +161,11 @@ export function AppSidebar() {
               )
             }
             
+            // Special handling for notification
+            if (item.title === "Notification") {
+              return <NotificationLink key={item.title} isActive={isActive} />;
+            }
+            
             return item.onClick ? (
               // Use button for items with onClick handlers (like More)
               <button
@@ -172,20 +182,15 @@ export function AppSidebar() {
                 <span className="text-xl font-normal">{item.title}</span>
               </button>
             ) : (
-              // Use Link for navigation items
-              <Link
+              // Use AppSidebarLink for navigation items to handle auth requirements
+              <AppSidebarLink
                 key={item.title}
-                href={item.url}
-                className={cn(
-                  "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full",
-                  isActive
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                )}
-              >
-                <item.icon className={cn("h-7 w-7", isActive ? "stroke-2" : "stroke-1")} />
-                <span className="text-xl font-normal">{item.title}</span>
-              </Link>
+                title={item.title}
+                url={item.url}
+                icon={item.icon}
+                isActive={isActive}
+                requiresAuth={item.requiresAuth}
+              />
             )
           })}
         </nav>

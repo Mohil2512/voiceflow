@@ -74,13 +74,18 @@ export async function POST(request: NextRequest) {
       const databases = await getDatabases()
       const postsDb = databases.activities // Use activities database for posts
       
+      // Get user data to ensure we have the correct username
+      const authDb = databases.auth;
+      const userData = await authDb.collection('users').findOne({ email: session.user.email });
+      
       const newPost = {
         content: content || '',
         images: imageData,
         author: {
           name: session.user.name,
           email: session.user.email,
-          image: session.user.image
+          image: session.user.image,
+          username: userData?.username || session.user.username || session.user.email?.split('@')[0] || 'user'
         },
         createdAt: new Date(),
         likes: 0,
