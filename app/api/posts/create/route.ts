@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Post content cannot be empty' }, { status: 400 })
     }
 
-    let imageData = []
+    let imageData: { name: string; type: string; data: string; size: number; }[] = []
     
     // Only process images if there are any
     if (images && images.length > 0) {

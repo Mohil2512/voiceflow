@@ -10,6 +10,27 @@ import { useDataWithCache } from '@/hooks/use-data-cache'
 import { RefreshButton } from '@/components/ui/refresh-button'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+// Define the post type to fix TypeScript errors
+interface Post {
+  id: string;
+  content: string;
+  timestamp: string;
+  user?: {
+    name: string;
+    username: string;
+    avatar?: string;
+    verified?: boolean;
+    email?: string;
+  };
+  likes?: number;
+  replies?: number;
+  reposts?: number;
+  isLiked?: boolean;
+  isReposted?: boolean;
+  image?: string;
+  [key: string]: any; // Allow other properties
+}
+
 export default function HomePage() {
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
@@ -26,7 +47,7 @@ export default function HomePage() {
       try {
         // Check for local draft posts first
         const localPosts = localStorage.getItem('voiceflow_local_posts');
-        let combinedPosts = [];
+        let combinedPosts: Post[] = [];
         
         // Fetch from API with cache-busting timestamp
         const response = await fetch('/api/posts?timestamp=' + new Date().getTime());
@@ -36,7 +57,7 @@ export default function HomePage() {
           
           // If we also have local posts, combine them
           if (localPosts) {
-            const parsedLocalPosts = JSON.parse(localPosts);
+            const parsedLocalPosts = JSON.parse(localPosts) as Post[];
             combinedPosts = [...parsedLocalPosts, ...combinedPosts];
           }
           

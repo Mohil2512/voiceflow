@@ -14,26 +14,52 @@ const getDatabases = async () => {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { email: string } }
+  { params }: { params: { identifier: string } }
 ) {
   try {
-    const { email } = params
+    const { identifier } = params
     
-    if (!email) {
-      return NextResponse.json({ error: 'Email parameter is required' }, { status: 400 })
+    if (!identifier) {
+      return NextResponse.json({ error: 'Identifier parameter is required' }, { status: 400 })
     }
 
     const databases = await getDatabases()
     const activitiesDb = databases.activities
     
+    // Determine if identifier is an email or username
+    const isEmail = identifier.includes('@')
+    const decodedIdentifier = decodeURIComponent(identifier)
+    
     // Get user's profile to check for reposted posts IDs
     const profilesDb = databases.profiles
-    const userProfile = await profilesDb.collection('profiles').findOne({ email: decodeURIComponent(email) })
+    let userProfile;
+    
+    if (isEmail) {
+      userProfile = await profilesDb.collection('profiles').findOne({ email: decodedIdentifier })
+    } else {
+      // Try to find by username
+      const authDb = databases.auth
+      const user = await authDb.collection('users').findOne({ 
+        username: { $regex: new RegExp(`^${decodedIdentifier}$`, 'i') }
+      })
+      
+      if (user) {
+        userProfile = await profilesDb.collection('profiles').findOne({ email: user.email })
+      }
+    }
+    
+    // If no user found, return empty array
+    if (!userProfile) {
+      return NextResponse.json({ reposts: [] })
+    }
+    
+    // Use email from the user profile for consistency
+    const userEmail = userProfile.email
     
     // Fetch user reposts (posts that were explicitly marked as reposts by this user)
     const reposts = await activitiesDb.collection('posts')
       .find({ 
-        'author.email': decodeURIComponent(email),
+        'author.email': userEmail,
         isRepost: true
       })
       .sort({ createdAt: -1 })
@@ -43,7 +69,7 @@ export async function GET(
     // Also fetch posts that have been marked with repostedBy containing the user's email
     const repostedPosts = await activitiesDb.collection('posts')
       .find({ 
-        repostedBy: decodeURIComponent(email) 
+        repostedBy: userEmail 
       })
       .sort({ createdAt: -1 })
       .limit(50)

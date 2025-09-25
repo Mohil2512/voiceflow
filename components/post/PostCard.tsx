@@ -15,6 +15,7 @@ interface PostCardProps {
     username: string
     avatar?: string
     verified?: boolean
+    email?: string
   }
   content: string
   timestamp: string

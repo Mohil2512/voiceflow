@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 
+// Define TypeScript interfaces for the MongoDB documents
+interface FollowingDocument {
+  userId: string;
+  following: string[];
+  updatedAt?: Date;
+}
+
+interface FollowersDocument {
+  userId: string;
+  followers: string[];
+  updatedAt?: Date;
+}
+
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
@@ -73,13 +86,13 @@ export async function POST(request: NextRequest) {
     const targetUserId = targetUser._id.toString()
     
     // Get or create follow records for both users
-    const currentUserFollowing = await profiles.collection('following').findOne({ userId: currentUserId }) || { userId: currentUserId, following: [] }
-    const targetUserFollowers = await profiles.collection('followers').findOne({ userId: targetUserId }) || { userId: targetUserId, followers: [] }
+    const currentUserFollowing = await profiles.collection<FollowingDocument>('following').findOne({ userId: currentUserId }) || { userId: currentUserId, following: [] as string[] }
+    const targetUserFollowers = await profiles.collection<FollowersDocument>('followers').findOne({ userId: targetUserId }) || { userId: targetUserId, followers: [] as string[] }
     
     if (action === 'follow') {
       // Add target to current user's following if not already there
       if (!currentUserFollowing.following.includes(targetUserId)) {
-        await profiles.collection('following').updateOne(
+        await profiles.collection<FollowingDocument>('following').updateOne(
           { userId: currentUserId },
           { 
             $set: { updatedAt: new Date() },
@@ -89,7 +102,7 @@ export async function POST(request: NextRequest) {
         )
         
         // Add current user to target user's followers
-        await profiles.collection('followers').updateOne(
+        await profiles.collection<FollowersDocument>('followers').updateOne(
           { userId: targetUserId },
           { 
             $set: { updatedAt: new Date() },
@@ -119,14 +132,14 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Unfollow logic
-      await profiles.collection('following').updateOne(
+      await profiles.collection<FollowingDocument>('following').updateOne(
         { userId: currentUserId },
-        { $pull: { following: targetUserId } }
+        { $pull: { following: targetUserId } as any }
       )
       
-      await profiles.collection('followers').updateOne(
+      await profiles.collection<FollowersDocument>('followers').updateOne(
         { userId: targetUserId },
-        { $pull: { followers: currentUserId } }
+        { $pull: { followers: currentUserId } as any }
       )
       
       return NextResponse.json({ success: true, action: 'unfollow', isFollowing: false })

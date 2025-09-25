@@ -34,15 +34,25 @@ export async function GET(
     // Connect to database - MongoDB Atlas
     const { auth, profiles } = await getDatabases()
     
+    // Define user document interface
+    interface UserDocument {
+      _id: { toString(): string };
+      email: string;
+      username: string;
+      name?: string;
+      image?: string;
+      [key: string]: any; // Allow other properties
+    }
+    
     // Search by multiple ways to find the user
-    let user = null
+    let user: UserDocument | null = null
     
     // First, try to find user by exact username
-    user = await auth.collection('users').findOne({ username })
+    user = await auth.collection<UserDocument>('users').findOne({ username })
     
     // If not found, try lowercase username for case-insensitive match
     if (!user) {
-      user = await auth.collection('users').findOne({ 
+      user = await auth.collection<UserDocument>('users').findOne({ 
         username: { $regex: new RegExp(`^${username}$`, 'i') } 
       })
     }
@@ -50,7 +60,7 @@ export async function GET(
     // If still not found, try by email prefix
     if (!user) {
       const emailPrefix = username.toLowerCase()
-      user = await auth.collection('users').findOne({
+      user = await auth.collection<UserDocument>('users').findOne({
         email: { $regex: new RegExp(`^${emailPrefix}@`, 'i') }
       })
     }
