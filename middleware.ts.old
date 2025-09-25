@@ -1,0 +1,100 @@
+import { NextResponse } from 'next/server';
+import { withAuth } from 'next-auth/middleware';
+import { validateEnv } from './lib/validateEnv';
+
+// Validate environment variables during initialization
+validateEnv();
+
+// Authentication middleware
+export default withAuth(
+  function middleware(req) {
+    const { pathname } = req.nextUrl;
+    
+    // Handle case-sensitive notification path redirection
+    if (pathname.toLowerCase() === '/notification' && pathname !== '/notification') {
+      return NextResponse.redirect(new URL('/notification', req.url));
+    }
+    
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ token, req }) => {
+        const { pathname } = req.nextUrl;
+        
+        // Allow access to auth pages
+        if (pathname.startsWith('/auth/')) {
+          return true;
+        }
+        
+        // Allow access to API routes (except protected ones)
+        if (pathname.startsWith('/api/') && !pathname.startsWith('/api/protected/')) {
+          return true;
+        }
+        
+        // Allow access to public pages
+        const publicPages = ['/', '/about', '/privacy', '/terms'];
+        if (publicPages.includes(pathname)) {
+          return true;
+        }
+        
+        // For all other pages, require authentication
+        if (!token) {
+          return false;
+        }
+        
+        // If user is authenticated but profile is incomplete,
+        // allow access to main app pages but redirect from settings/admin pages
+        if (!token.profileComplete && 
+            pathname !== '/auth/complete-profile' && 
+            pathname !== '/dashboard' && 
+            pathname !== '/profile' && 
+            pathname !== '/activity' && 
+            pathname !== '/create' && 
+            pathname !== '/search') {
+          return false;
+        }
+        
+        return true;
+      }
+    }
+  }
+);
+      },
+    },
+  }
+)
+
+// Define matcher patterns for middleware
+export const config = {
+  matcher: [
+    // Match all paths that require authentication or special handling
+    '/dashboard/:path*',
+    '/profile/:path*',
+    '/notification/:path*',
+    '/Notification/:path*', 
+    '/activity/:path*',
+    '/search/:path*',
+    '/create/:path*',
+    '/auth/:path*',
+    '/api/protected/:path*',
+  ],
+}
+      },
+    },
+  }
+)
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (images, etc.)
+     * - Notification route which we handle separately for SSR safety
+     */
+    '/((?!_next/static|_next/image|favicon.ico|Notification|.*\\.).*)',
+  ],
+}
