@@ -1,7 +1,7 @@
 'use client'
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SessionProvider } from 'next-auth/react'
+import ClientProvider from "@/providers/ClientProvider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -16,7 +16,7 @@ const ThemeScript = dynamic(() => import("@/components/ui/theme-script"), { ssr:
 
 interface ProvidersProps {
   children: React.ReactNode;
-  session?: any;
+  session?: any; // Session will be passed to ClientProvider internally
 }
 
 export function Providers({ children, session }: ProvidersProps) {
@@ -53,7 +53,7 @@ export function Providers({ children, session }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionProvider session={session}>
+      <ClientProvider session={session}>
         <ThemeProvider defaultTheme="dark" storageKey="voiceflow-theme">
           {/* Theme script first for early theme application */}
           <ThemeScript />
@@ -72,7 +72,7 @@ export function Providers({ children, session }: ProvidersProps) {
             </TooltipProvider>
           </DataProvider>
         </ThemeProvider>
-      </SessionProvider>
+      </ClientProvider>
     </QueryClientProvider>
   );
 }

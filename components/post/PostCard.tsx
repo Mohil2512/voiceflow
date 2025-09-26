@@ -126,8 +126,12 @@ export function PostCard({
       // If it's the current user's own post, redirect to their profile page
       router.push(`/profile`);
     } else {
+      // First make sure username is valid and safely encoded
+      const safeUsername = displayUsername.trim().replace(/\s+/g, '_');
+      console.log(`Navigating to profile: ${safeUsername}`);
+      
       // Otherwise navigate to the specified user's profile
-      router.push(`/profile/${displayUsername}`);
+      router.push(`/profile/${encodeURIComponent(safeUsername)}`);
     }
   }
 

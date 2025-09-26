@@ -65,8 +65,16 @@ export default function UserProfilePage({ params }: { params: { username: string
         // Clear any previous errors
         console.log('Fetching profile for username:', username)
         
+        // Sanitize and normalize the username 
+        // - Remove leading/trailing whitespace
+        // - Replace spaces with underscores
+        // - Ensure proper encoding of special characters
+        const normalizedUsername = username.trim().replace(/\s+/g, '_');
+        const encodedUsername = encodeURIComponent(normalizedUsername);
+        console.log(`Normalized username: "${normalizedUsername}" (encoded: ${encodedUsername})`);
+        
         // Fetch by username - using our new API endpoint
-        const response = await fetch(`/api/users/username/${encodeURIComponent(username)}`)
+        const response = await fetch(`/api/users/username/${encodedUsername}`)
         if (response.ok) {
           const data = await response.json()
           
@@ -89,12 +97,20 @@ export default function UserProfilePage({ params }: { params: { username: string
             }
           }
         } else {
-          console.error('User not found:', username, response.status)
+          console.error(`User not found: @${username} (Status: ${response.status})`)
+          
+          // Attempt to get more detailed error information
+          try {
+            const errorData = await response.json()
+            console.error('Error details:', errorData)
+          } catch (parseError) {
+            // Response couldn't be parsed as JSON
+          }
         }
         
         return []
       } catch (error) {
-        console.error('Error fetching user data:', error)
+        console.error(`Error fetching user data for @${username}:`, error)
         return []
       } finally {
         setLoading(false)
@@ -109,6 +125,13 @@ export default function UserProfilePage({ params }: { params: { username: string
   useEffect(() => {
     setMounted(true)
   }, [])
+  
+  // Add debug info about username to console
+  useEffect(() => {
+    if (mounted && username) {
+      console.log(`Profile page for username: "${username}"`);
+    }
+  }, [mounted, username]);
 
   if (!mounted || loading) {
     return (
@@ -128,6 +151,20 @@ export default function UserProfilePage({ params }: { params: { username: string
           <div className="p-6 text-center">
             <h1 className="text-2xl font-bold mb-2">User Not Found</h1>
             <p className="text-muted-foreground mb-4">The user @{username} doesn't exist or has been removed.</p>
+            <div className="mb-6 p-4 bg-card rounded-lg">
+              <p className="text-sm text-muted-foreground">If you believe this is an error, check for:</p>
+              <ul className="text-sm text-left mt-2 list-disc list-inside">
+                <li>Correct spelling of the username</li>
+                <li>Case sensitivity (usernames may be case-sensitive)</li>
+                <li>Special characters or spaces in the username</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Return to Home
+            </button>
             <div className="text-sm text-muted-foreground">
               <p>This could be because:</p>
               <ul className="list-disc list-inside mt-2 mb-4 text-left max-w-md mx-auto">

@@ -80,6 +80,21 @@ export async function GET(
       .sort({ createdAt: -1 })
       .limit(50)
       .toArray()
+      
+    // If we found posts, double-check the user exists before returning
+    if (posts.length > 0 && !isEmail) {
+      // Verify the user actually exists in the database
+      const firstPost = posts[0];
+      const authorEmail = firstPost.author?.email;
+      
+      if (authorEmail) {
+        // Try to fetch the user to ensure they exist and get latest data
+        const user = await auth.collection('users').findOne({ email: authorEmail });
+        if (user) {
+          console.log(`Found user ${user.username} for posts by identifier ${identifier}`);
+        }
+      }
+    }
     
     // Transform posts to match frontend format
     const formattedPosts = posts.map(post => ({

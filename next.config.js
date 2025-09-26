@@ -46,12 +46,12 @@ const nextConfig = {
     return config
   },
   
-  // Skip validation during build to avoid issues with NextAuth
+  // Proper validation - no longer ignoring errors
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   
   // Improve security by removing X-Powered-By header

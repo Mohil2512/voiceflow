@@ -47,22 +47,67 @@ export async function GET(
     // Search by multiple ways to find the user
     let user: UserDocument | null = null
     
+    // Debug info
+    console.log(`Looking up user with username: "${username}"`);
+    
     // First, try to find user by exact username
     user = await auth.collection<UserDocument>('users').findOne({ username })
     
     // If not found, try lowercase username for case-insensitive match
     if (!user) {
+      try {
+        // Use safe regex pattern with escaping special characters
+        const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        user = await auth.collection<UserDocument>('users').findOne({ 
+          username: { $regex: new RegExp(`^${escapedUsername}$`, 'i') } 
+        })
+      } catch (error) {
+        console.error('Error in regex search:', error);
+        // Continue to next search method
+      }
+    }
+    
+    // Try additional query strategies if user still not found
+    if (!user) {
+      // Look up by normalized username (replace spaces with underscores)
+      const normalizedUsername = username.replace(/\s+/g, '_');
       user = await auth.collection<UserDocument>('users').findOne({ 
-        username: { $regex: new RegExp(`^${username}$`, 'i') } 
+        username: normalizedUsername 
       })
     }
     
     // If still not found, try by email prefix
     if (!user) {
-      const emailPrefix = username.toLowerCase()
-      user = await auth.collection<UserDocument>('users').findOne({
-        email: { $regex: new RegExp(`^${emailPrefix}@`, 'i') }
-      })
+      try {
+        const emailPrefix = username.toLowerCase()
+        const safeEmailPrefix = emailPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        user = await auth.collection<UserDocument>('users').findOne({
+          email: { $regex: new RegExp(`^${safeEmailPrefix}@`, 'i') }
+        })
+      } catch (error) {
+        console.error('Error in email regex search:', error);
+      }
+    }
+    
+    // Final fallback: Try a fuzzy search based on any portion of the username
+    if (!user) {
+      try {
+        // Try to find any username that contains this string
+        // This is a last resort and might not be accurate
+        const fuzzyUsername = username.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        if (fuzzyUsername.length > 2) { // Only try if we have at least 3 characters
+          user = await auth.collection<UserDocument>('users').findOne({
+            username: { $regex: new RegExp(fuzzyUsername, 'i') }
+          })
+          
+          if (user) {
+            console.log(`Found user via fuzzy match: ${user.username}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error in fuzzy username search:', error);
+      }
     }
     
     if (!user) {
