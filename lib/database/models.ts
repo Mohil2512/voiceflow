@@ -111,6 +111,7 @@ interface INotification extends Omit<Notification, '_id'>, Document {}
 
 const postSchema = new Schema<IPost>({
   userId: { type: String, required: true },
+  username: { type: String, required: true }, // Store username for easy display
   
   content: { type: String, required: true, maxlength: 2000 },
   images: [String],
@@ -143,6 +144,7 @@ const postLikeSchema = new Schema<IPostLike>({
 const commentSchema = new Schema<IComment>({
   postId: { type: String, required: true },
   userId: { type: String, required: true },
+  username: { type: String, required: true }, // Store username for easy display
   parentCommentId: String,
   
   content: { type: String, required: true, maxlength: 1000 },

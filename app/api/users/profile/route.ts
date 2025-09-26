@@ -55,14 +55,32 @@ export async function PUT(request: NextRequest) {
     }
 
     // If avatar was uploaded, process it
-    if (avatarFile) {
-      const arrayBuffer = await avatarFile.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-      userUpdate.image = `data:${avatarFile.type};base64,${buffer.toString("base64")}`
+    if (avatarFile && avatarFile instanceof File) {
+      try {
+        const arrayBuffer = await avatarFile.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+        userUpdate.image = `data:${avatarFile.type};base64,${buffer.toString("base64")}`
+      } catch (error) {
+        console.error("Error processing avatar file:", error)
+        return NextResponse.json(
+          { error: "Failed to process image" },
+          { status: 400 }
+        )
+      }
     }
 
     // Update user in database
     const databases = await getDatabases()
+    
+    // Get the current user
+    const currentUser = await databases.auth.collection("users").findOne(
+      { email: session.user.email }
+    )
+    
+    // Check if the username is being changed
+    const isUsernameChanged = currentUser && currentUser.username !== username
+    
+    // Update user in database
     const result = await databases.auth.collection("users").updateOne(
       { email: session.user.email },
       { $set: userUpdate }
@@ -76,6 +94,26 @@ export async function PUT(request: NextRequest) {
         createdAt: new Date(),
         updatedAt: new Date(),
       })
+    } 
+    // If username was changed, update references in posts and comments
+    else if (isUsernameChanged && currentUser) {
+      // Get user ID for reference
+      const userId = currentUser._id.toString()
+      
+      // Update username in posts
+      await databases.activities.collection("posts").updateMany(
+        { userId: userId },
+        { $set: { username: username } }
+      )
+      
+      // Update username in comments
+      await databases.activities.collection("comments").updateMany(
+        { userId: userId },
+        { $set: { username: username } }
+      )
+      
+      // Log the username change
+      console.log(`Username changed for user ${userId} from ${currentUser.username} to ${username}`)
     }
 
     return NextResponse.json({ 

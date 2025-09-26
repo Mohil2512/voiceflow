@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
       const authDb = databases.auth;
       const userData = await authDb.collection('users').findOne({ email: session.user.email });
       
+      // Extract username for database consistency
+      const username = userData?.username || session.user.username || session.user.email?.split('@')[0] || 'user'
+      
       const newPost = {
         content: content || '',
         images: imageData,
@@ -85,8 +88,10 @@ export async function POST(request: NextRequest) {
           name: session.user.name,
           email: session.user.email,
           image: session.user.image,
-          username: userData?.username || session.user.username || session.user.email?.split('@')[0] || 'user'
+          username: username
         },
+        userId: userData?._id.toString(), // Store the user ID for database relationships
+        username: username, // Store the username directly in the post for consistency
         createdAt: new Date(),
         likes: 0,
         replies: 0
