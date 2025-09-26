@@ -14,13 +14,6 @@
       ]
     }
   ],
-  "routes": [
-    { 
-      "src": "/Notification", 
-      "status": 308,
-      "headers": { "Location": "/notification" } 
-    }
-  ],
   "build": {
     "env": {
       "NEXT_PUBLIC_VERCEL_ENV": "production"
