@@ -85,9 +85,8 @@ export async function POST(request: NextRequest) {
         content: content || '',
         images: imageData,
         author: {
-          name: session.user.name,
           email: session.user.email,
-          image: session.user.image,
+          image: userData?.image || session.user.image,
           username: username
         },
         userId: userData?._id.toString(), // Store the user ID for database relationships

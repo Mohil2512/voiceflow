@@ -14,6 +14,7 @@ interface PostCardProps {
     name: string
     username: string
     avatar?: string
+    image?: string  // Added image field for compatibility
     verified?: boolean
     email?: string
   }
@@ -140,9 +141,9 @@ export function PostCard({
       <div className="flex space-x-3">
         <div onClick={handleUserClick} className="cursor-pointer">
           <Avatar className="w-10 h-10 ring-1 ring-border hover:ring-primary transition-all">
-            <AvatarImage src={user?.avatar || ''} alt={user?.name || 'User'} />
+            <AvatarImage src={user?.avatar || user?.image || ''} alt={displayUsername} />
             <AvatarFallback className="bg-muted text-foreground">
-              {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+              {displayUsername ? displayUsername.charAt(0).toUpperCase() : '?'}
             </AvatarFallback>
           </Avatar>
         </div>
@@ -153,19 +154,13 @@ export function PostCard({
               onClick={handleUserClick}
               className="font-semibold text-foreground hover:underline cursor-pointer"
             >
-              {user?.name || 'Anonymous'}
+              {displayUsername}
             </span>
             {user?.verified && (
               <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                 <span className="text-primary-foreground text-xs">✓</span>
               </div>
             )}
-            <span 
-              onClick={handleUserClick}
-              className="text-muted-foreground hover:underline cursor-pointer"
-            >
-              @{displayUsername}
-            </span>
             <span className="text-muted-foreground">·</span>
             <span className="text-muted-foreground">{timestamp}</span>
           </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -26,7 +26,27 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
   const [images, setImages] = useState<{id: number, file: File, preview: string}[]>([])
   const [isPosting, setIsPosting] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Fetch current user data including profile picture
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      if (session?.user?.email) {
+        try {
+          const response = await fetch('/api/users/me')
+          if (response.ok) {
+            const data = await response.json()
+            setCurrentUser(data.user)
+          }
+        } catch (error) {
+          console.error('Error fetching current user:', error)
+        }
+      }
+    }
+    
+    fetchCurrentUser()
+  }, [session?.user?.email])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
@@ -172,8 +192,8 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
         </DialogHeader>
         <div className="flex gap-4 mt-4">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={session?.user?.image || "/placeholder.svg"} />
-            <AvatarFallback>{session?.user?.name?.[0] || "U"}</AvatarFallback>
+            <AvatarImage src={currentUser?.image || session?.user?.image || "/placeholder.svg"} />
+            <AvatarFallback>{(currentUser?.name || session?.user?.name)?.[0] || "U"}</AvatarFallback>
           </Avatar>
           
           <div className="flex-1 space-y-4">

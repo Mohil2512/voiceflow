@@ -20,6 +20,8 @@ export default function ProfilePage() {
   const searchParams = useSearchParams()
   const [editProfileOpen, setEditProfileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [initialPostsLoad, setInitialPostsLoad] = useState(true)
   const { wasRefreshed } = useAppData()
   
   // Set mounted state after component mounts
@@ -27,109 +29,49 @@ export default function ProfilePage() {
     setMounted(true)
   }, [])
   
-  // Cache user posts with our custom hook - ALWAYS call this regardless of authentication status
-  const { 
-    data: userPosts = [], 
-    isLoading: loading, 
-    refetch: refreshPosts 
-  } = useDataWithCache(
-    `profile-posts-${session?.user?.email || "guest"}`,
-    async () => {
-      if (!session?.user?.email) return []
-      
-      try {
-        console.log("Fetching user posts for:", session.user.email);
-        const response = await fetch(`/api/posts/user/${encodeURIComponent(session.user.email)}`)
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Received user posts:", data);
-          
-          // If we have user's posts from the API
-          if (data.posts && Array.isArray(data.posts) && data.posts.length > 0) {
-            return data.posts;
-          }
-          
-          // Fall back to global posts as a temporary solution
-          console.log("No user posts found, attempting to get posts from global cache");
-          const globalPostsResponse = await fetch('/api/posts');
-          if (globalPostsResponse.ok) {
-            const globalData = await globalPostsResponse.json();
-            // Filter by email if possible
-            if (globalData.posts && Array.isArray(globalData.posts)) {
-              const filteredPosts = globalData.posts.filter(post => 
-                post.user?.email === session.user.email ||
-                post.author?.email === session.user.email
-              );
-              return filteredPosts.length > 0 ? filteredPosts : [];
-            }
-          }
-        } else {
-          console.error("Error fetching user posts:", response.status, response.statusText);
-        }
-        return [];
-      } catch (error) {
-        console.error('Error fetching user posts:', error);
-        return [];
-      }
-    },
-    {
-      // Only force refresh when explicitly requested
-      forceRefresh: wasRefreshed,
-      // Only run query when we have a session
-      enabled: !!session?.user?.email
-    }
-  )
+
   
-  // Cache user reposts with our custom hook - ALWAYS call this regardless of authentication status
-  const { 
-    data: userReposts = [], 
-    isLoading: loadingReposts, 
-    refetch: refreshReposts 
-  } = useDataWithCache(
-    `profile-reposts-${session?.user?.email || "guest"}`,
-    async () => {
-      if (!session?.user?.email) return []
-      
-      try {
-        console.log("Fetching user reposts for:", session.user.email);
-        const response = await fetch(`/api/posts/reposts/${encodeURIComponent(session.user.email)}`)
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Received user reposts:", data);
-          
-          // If we have user's reposts from the API
-          if (data.reposts && Array.isArray(data.reposts)) {
-            // Ensure each repost has the required properties
-            const formattedReposts = data.reposts.map((repost: any) => ({
-              ...repost,
-              id: repost.id || repost._id,
-              isReposted: true,
-              user: repost.user || {
-                name: session.user.name || 'User',
-                username: session.user.username || session.user.email?.split('@')[0] || 'user',
-                avatar: session.user.image || "/placeholder.svg"
-              }
-            }));
-            console.log("Formatted reposts:", formattedReposts);
-            return formattedReposts;
+  // Combined state for both profile and posts data
+  const [profileData, setProfileData] = useState<any>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  
+  // Fetch user profile data AND posts in single API call
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (session?.user?.email) {
+        try {
+          setProfileLoading(true)
+          console.log('Fetching profile and posts data...')
+          const response = await fetch('/api/users/me')
+          if (response.ok) {
+            const data = await response.json()
+            console.log('Profile and posts data fetched:', data)
+            setUserProfile(data.user)
+            setProfileData(data)
+            setInitialPostsLoad(false) // Stop loading immediately
+          } else {
+            console.error('Failed to fetch profile data:', response.status)
           }
-          
-          return [];
-        } else {
-          console.error("Error fetching user reposts:", response.status, response.statusText);
+        } catch (error) {
+          console.error('Error fetching profile data:', error)
+        } finally {
+          setProfileLoading(false)
         }
-      } catch (error) {
-        console.error('Error fetching user reposts:', error);
-        return [];
       }
-    },
-    {
-      // Only force refresh when explicitly requested
-      forceRefresh: wasRefreshed,
-      // Only run query when we have a session
-      enabled: !!session?.user?.email
     }
-  )
+    
+    fetchProfileData()
+  }, [session?.user?.email, editProfileOpen]) // Refetch when profile dialog closes
+  
+  // Get posts from the combined profile data
+  const userPosts = profileData?.posts || []
+  const loading = profileLoading
+  
+  // Simplified reposts - can be added to the combined API later if needed
+  const userReposts: any[] = []
+  const loadingReposts = profileLoading
+  
+
   
   if (status === "loading" || !mounted) {
     return (
@@ -184,16 +126,21 @@ export default function ProfilePage() {
 
   // If we reach here, user should be authenticated with a valid session
   const currentUser = {
-    name: session?.user?.name || "User",
-    username: session?.user?.username || session?.user?.email?.split("@")[0] || "user",
-    avatar: session?.user?.image || "/placeholder.svg",
-    bio: (session?.user as any)?.bio || "Welcome to my profile! This is where I share my thoughts and connect with others.",
+    name: userProfile?.name || session?.user?.name || "User",
+    username: userProfile?.username || session?.user?.username || session?.user?.email?.split("@")[0] || "user",
+    avatar: userProfile?.image || session?.user?.image || "/placeholder.svg",
+    bio: userProfile?.bio || (session?.user as any)?.bio || "Welcome to my profile! This is where I share my thoughts and connect with others.",
     joinDate: "Recently joined",
     location: "",
     website: "",
     following: 0,
     followers: 0
   }
+  
+  // Log profile data for debugging
+  console.log("User profile data:", userProfile)
+  console.log("Session user data:", session?.user)
+  console.log("Current user object:", currentUser)
 
   return (
     <Layout>
@@ -206,7 +153,7 @@ export default function ProfilePage() {
         <div className="p-6">
           <div className="flex items-start gap-4 mb-6">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={currentUser.avatar} />
+              <AvatarImage src={currentUser.avatar} alt={currentUser.username} />
               <AvatarFallback className="text-xl">
                 {currentUser.name[0]?.toUpperCase()}
               </AvatarFallback>
@@ -216,7 +163,7 @@ export default function ProfilePage() {
               <div className="flex justify-between items-start">
                 <div>
                   <h1 className="text-2xl font-bold">{currentUser.name}</h1>
-                  <p className="text-muted-foreground mb-3">@{currentUser.username}</p>
+                  <p className="text-muted-foreground mb-3">{currentUser.username}</p>
                 </div>
                 <Button 
                   variant="outline" 
@@ -371,6 +318,22 @@ export default function ProfilePage() {
           open={editProfileOpen}
           onOpenChange={setEditProfileOpen}
           currentUser={currentUser}
+          onProfileUpdated={() => {
+            // Trigger combined profile and posts data refetch
+            const fetchProfileData = async () => {
+              try {
+                const response = await fetch('/api/users/me')
+                if (response.ok) {
+                  const data = await response.json()
+                  setUserProfile(data.user)
+                  setProfileData(data)
+                }
+              } catch (error) {
+                console.error('Error refetching profile data:', error)
+              }
+            }
+            fetchProfileData()
+          }}
         />
       </div>
     </Layout>

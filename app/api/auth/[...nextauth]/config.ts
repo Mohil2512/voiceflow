@@ -54,10 +54,33 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token && session.user && token.sub) {
         session.user.id = token.sub;
-        // You can add other user properties here
+        
+        // Add image to session if available in token
+        if (token.picture) {
+          session.user.image = token.picture as string;
+        }
+        
+        // Add username if available
+        if (token.username) {
+          session.user.username = token.username as string;
+        }
       }
       return session;
     },
+    
+    async jwt({ token, user, account, profile }) {
+      // Copy user image to token if available
+      if (user?.image) {
+        token.picture = user.image;
+      }
+      
+      // Copy username if available
+      if (user?.username) {
+        token.username = user.username;
+      }
+      
+      return token;
+    }
   },
 };
 

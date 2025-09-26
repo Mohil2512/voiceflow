@@ -34,6 +34,7 @@ interface Post {
 export default function HomePage() {
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const { posts: cachedPosts, setPosts: setCachedPosts, wasRefreshed } = useAppData()
   
   // Fetch posts with cache support
@@ -84,6 +85,23 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true)
     
+    // Fetch current user data for profile picture
+    const fetchCurrentUser = async () => {
+      if (session?.user?.email) {
+        try {
+          const response = await fetch('/api/users/me')
+          if (response.ok) {
+            const data = await response.json()
+            setCurrentUser(data.user)
+          }
+        } catch (error) {
+          console.error('Error fetching current user:', error)
+        }
+      }
+    }
+
+    fetchCurrentUser()
+    
     // Add auto-refresh when page gets focus
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -102,7 +120,7 @@ export default function HomePage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
+  }, [session])
 
   if (status === 'loading' || !mounted) {
     return (
@@ -136,9 +154,9 @@ export default function HomePage() {
                 trigger={
                   <div className="flex gap-3 cursor-pointer w-full">
                     <Avatar className="w-10 h-10 ring-1 ring-border">
-                      <AvatarImage src={session.user?.image || '/placeholder.svg'} alt="Your avatar" />
+                      <AvatarImage src={currentUser?.image || session.user?.image || '/placeholder.svg'} alt="Your avatar" />
                       <AvatarFallback className="bg-muted text-foreground">
-                        {session.user?.name ? session.user.name[0].toUpperCase() : '?'}
+                        {currentUser?.name || session.user?.name ? (currentUser?.name || session.user?.name)[0].toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">

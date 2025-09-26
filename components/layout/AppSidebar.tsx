@@ -120,8 +120,8 @@ export function AppSidebar() {
   }
 
   return (
-    <div className="w-72 h-screen bg-background border-r border-border flex flex-col">
-      <div className="flex-1 px-6 py-8">
+    <div className="w-72 h-screen bg-background border-r border-border flex flex-col flex-shrink-0 overflow-hidden">
+      <div className="flex-1 px-6 py-8 overflow-y-auto">
         <div className="mb-8 px-2">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center">

@@ -96,24 +96,33 @@ export async function GET(
       }
     }
     
-    // Transform posts to match frontend format
-    const formattedPosts = posts.map(post => ({
-      id: post._id.toString(),
-      user: {
-        name: post.author?.name || 'Anonymous',
-        username: post.author?.username || post.author?.email?.split('@')[0] || 'anonymous',
-        avatar: post.author?.image || '/placeholder.svg',
-        verified: post.author?.verified || false,
-      },
-      content: post.content || '',
-      timestamp: formatTimestamp(post.createdAt),
-      likes: post.likes || 0,
-      replies: post.replies || 0,
-      reposts: post.reposts || 0,
-      // Use the first image from the images array if available
-      image: post.images && post.images.length > 0 
-        ? `data:${post.images[0].type};base64,${post.images[0].data}` 
-        : null,
+    // Transform posts to match frontend format with current user data
+    const formattedPosts = await Promise.all(posts.map(async (post) => {
+      // Get current user data from auth database
+      let currentUser: any = null
+      if (post.author?.email) {
+        currentUser = await auth.collection('users').findOne({ email: post.author.email })
+      }
+      
+      return {
+        id: post._id.toString(),
+        user: {
+          name: currentUser?.name || post.author?.name || 'Anonymous',
+          username: currentUser?.username || post.author?.username || post.author?.email?.split('@')[0] || 'anonymous',
+          avatar: currentUser?.image || post.author?.image || '/placeholder.svg',
+          verified: currentUser?.verified || post.author?.verified || false,
+          email: post.author?.email,
+        },
+        content: post.content || '',
+        timestamp: formatTimestamp(post.createdAt),
+        likes: post.likes || 0,
+        replies: post.replies || 0,
+        reposts: post.reposts || 0,
+        // Use the first image from the images array if available
+        image: post.images && post.images.length > 0 
+          ? `data:${post.images[0].type};base64,${post.images[0].data}` 
+          : null,
+      }
     }))
     
     return NextResponse.json({ posts: formattedPosts })

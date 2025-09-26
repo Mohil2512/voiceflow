@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Layout } from "@/components/layout/Layout"
@@ -17,7 +17,27 @@ export default function CreatePage() {
   const [images, setImages] = useState<{id: number, file: File, preview: string}[]>([])
   const [location, setLocation] = useState("")
   const [isPosting, setIsPosting] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Fetch current user data including profile picture
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      if (session?.user?.email) {
+        try {
+          const response = await fetch('/api/users/me')
+          if (response.ok) {
+            const data = await response.json()
+            setCurrentUser(data.user)
+          }
+        } catch (error) {
+          console.error('Error fetching current user:', error)
+        }
+      }
+    }
+    
+    fetchCurrentUser()
+  }, [session?.user?.email])
 
   if (status === "loading") {
     return (
@@ -103,8 +123,8 @@ export default function CreatePage() {
           <CardContent className="p-6">
             <div className="flex gap-4">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={session?.user?.image || "/placeholder.svg"} />
-                <AvatarFallback>{session?.user?.name?.[0] || "U"}</AvatarFallback>
+                <AvatarImage src={currentUser?.image || session?.user?.image || "/placeholder.svg"} />
+                <AvatarFallback>{(currentUser?.name || session?.user?.name)?.[0] || "U"}</AvatarFallback>
               </Avatar>
               
               <div className="flex-1 space-y-4">

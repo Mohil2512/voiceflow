@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
@@ -21,12 +21,14 @@ interface EditProfileCardProps {
     avatar: string
     bio: string
   }
+  onProfileUpdated?: () => void
 }
 
 export function EditProfileCard({ 
   open, 
   onOpenChange, 
-  currentUser 
+  currentUser,
+  onProfileUpdated
 }: EditProfileCardProps) {
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
@@ -94,15 +96,20 @@ export function EditProfileCard({
         throw new Error(error.message || 'Failed to update profile')
       }
 
-      // Update the session with new user data
+      // Get the updated user data from the response
+      const updatedData = await response.json();
+      
+      // Update the session with new user data (but not the large image data)
       if (session) {
+        console.log("Updating session with new data:", updatedData);
         await updateSession({
           ...session,
           user: {
             ...session.user,
             name,
             username,
-            image: avatarPreview || avatar
+            // Don't store large base64 images in session - just a flag that image was updated
+            imageUpdated: !!avatarFile
           }
         })
       }
@@ -114,6 +121,9 @@ export function EditProfileCard({
 
       // Close dialog and refresh page
       onOpenChange(false)
+      if (onProfileUpdated) {
+        onProfileUpdated()
+      }
       router.refresh()
     } catch (error) {
       console.error('Error updating profile:', error)
@@ -132,6 +142,9 @@ export function EditProfileCard({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit profile</DialogTitle>
+          <DialogDescription>
+            Update your profile information, including your name, username, bio, and profile picture.
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">

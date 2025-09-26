@@ -57,9 +57,12 @@ export async function PUT(request: NextRequest) {
     // If avatar was uploaded, process it
     if (avatarFile && avatarFile instanceof File) {
       try {
+        console.log("Processing avatar file:", avatarFile.name, avatarFile.type, avatarFile.size)
         const arrayBuffer = await avatarFile.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
-        userUpdate.image = `data:${avatarFile.type};base64,${buffer.toString("base64")}`
+        const base64Image = `data:${avatarFile.type};base64,${buffer.toString("base64")}`
+        userUpdate.image = base64Image
+        console.log("Avatar processed successfully, length:", base64Image.length)
       } catch (error) {
         console.error("Error processing avatar file:", error)
         return NextResponse.json(
@@ -81,10 +84,12 @@ export async function PUT(request: NextRequest) {
     const isUsernameChanged = currentUser && currentUser.username !== username
     
     // Update user in database
+    console.log("Updating user in database with:", userUpdate)
     const result = await databases.auth.collection("users").updateOne(
       { email: session.user.email },
       { $set: userUpdate }
     )
+    console.log("Database update result:", result)
 
     if (result.matchedCount === 0) {
       // User doesn't exist, create new user record
@@ -95,27 +100,58 @@ export async function PUT(request: NextRequest) {
         updatedAt: new Date(),
       })
     } 
-    // If username was changed, update references in posts and comments
-    else if (isUsernameChanged && currentUser) {
+    // If username was changed or avatar was uploaded, update references in posts and comments
+    else if ((isUsernameChanged || avatarFile) && currentUser) {
       // Get user ID for reference
       const userId = currentUser._id.toString()
       
-      // Update username in posts
-      await databases.activities.collection("posts").updateMany(
-        { userId: userId },
-        { $set: { username: username } }
-      )
+      // Create update object for posts and comments
+      const updateFields: any = {}
       
-      // Update username in comments
-      await databases.activities.collection("comments").updateMany(
-        { userId: userId },
-        { $set: { username: username } }
-      )
+      // Update username if changed
+      if (isUsernameChanged) {
+        updateFields.username = username
+        
+        // Update author.username in posts for display
+        await databases.activities.collection("posts").updateMany(
+          { userId: userId },
+          { $set: { "author.username": username } }
+        )
+        
+        // Log the username change
+        console.log(`Username changed for user ${userId} from ${currentUser.username} to ${username}`)
+      }
       
-      // Log the username change
-      console.log(`Username changed for user ${userId} from ${currentUser.username} to ${username}`)
+      // Update avatar if changed
+      if (avatarFile) {
+        // Update avatar in posts
+        await databases.activities.collection("posts").updateMany(
+          { userId: userId },
+          { $set: { "author.image": userUpdate.image } }
+        )
+        
+        // Log the avatar change
+        console.log(`Avatar updated for user ${userId}`)
+      }
+      
+      // Update posts with the relevant fields
+      if (Object.keys(updateFields).length > 0) {
+        await databases.activities.collection("posts").updateMany(
+          { userId: userId },
+          { $set: updateFields }
+        )
+        
+        // Update comments
+        await databases.activities.collection("comments").updateMany(
+          { userId: userId },
+          { $set: updateFields }
+        )
+      }
     }
 
+    // Prepare response with actual image data if available
+    const updatedImageUrl = avatarFile ? userUpdate.image : session.user.image;
+    
     return NextResponse.json({ 
       message: "Profile updated successfully",
       user: {
@@ -123,7 +159,7 @@ export async function PUT(request: NextRequest) {
         username,
         bio,
         email: session.user.email,
-        image: avatarFile ? true : session.user.image, // Just indicate if image was updated
+        image: updatedImageUrl, // Return the actual image data
       }
     })
   } catch (error) {
