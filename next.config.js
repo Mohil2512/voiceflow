@@ -4,6 +4,20 @@ const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
   
+  // Exclude problematic pages from the build
+  pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  
+  // Handle redirects for old Pages Router paths
+  async redirects() {
+    return [
+      {
+        source: '/Notification',
+        destination: '/notification',
+        permanent: true,
+      },
+    ]
+  },
+  
   images: {
     remotePatterns: [
       {
