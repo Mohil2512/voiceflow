@@ -86,6 +86,7 @@ export interface UserProfile {
 export interface Post {
   _id?: string;
   userId: string; // Reference to UserAuth._id
+  username: string; // Store username for easy display
   
   // Post Content
   content: string;
@@ -125,6 +126,7 @@ export interface Comment {
   _id?: string;
   postId: string; // Reference to Post._id
   userId: string; // Reference to UserAuth._id
+  username: string; // Store username for easy display
   parentCommentId?: string; // For nested comments
   
   content: string;
