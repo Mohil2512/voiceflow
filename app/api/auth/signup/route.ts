@@ -1,121 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { VALIDATION_RULES } from '@/lib/database/schemas'
+import clientPromise from '@/lib/database/mongodb'
 
-// Conditional import of database functions
-const getUserCollection = async () => {
-  if (!process.env.MONGODB_URI) {
-    throw new Error('Database not available')
-  }
-  const { getUserCollection: getCollection } = await import('@/lib/database/mongodb')
-  return getCollection()
-}
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, username, email, password, dateOfBirth, gender, phoneNumber } = await request.json()
+    const body = await request.json()
+    const { name, username, email, password, phoneNumber, bio } = body
 
-    // Validation
-    if (!name || !username || !email || !password || !dateOfBirth || !gender || !phoneNumber) {
+    // Validate required fields (based on our new requirements)
+    if (!name || !username || !email || !password || !phoneNumber) {
       return NextResponse.json(
-        { message: 'All fields are required' },
+        { message: 'Name, username, email, password, and phone number are required' },
         { status: 400 }
       )
     }
 
-    // Username validation
-    if (username.length < VALIDATION_RULES.username.minLength) {
+    // Validate username format
+    if (username.length < 3 || !/^[a-zA-Z0-9_]+$/.test(username)) {
       return NextResponse.json(
-        { message: `Username must be at least ${VALIDATION_RULES.username.minLength} characters long` },
+        { message: 'Username must be at least 3 characters and contain only letters, numbers, and underscores' },
         { status: 400 }
       )
     }
 
-    if (!VALIDATION_RULES.username.pattern.test(username)) {
+    // Validate password length
+    if (password.length < 8) {
       return NextResponse.json(
-        { message: 'Username can only contain letters, numbers, and underscores' },
+        { message: 'Password must be at least 8 characters long' },
         { status: 400 }
       )
     }
 
-    // Password validation
-    if (password.length < VALIDATION_RULES.password.minLength) {
-      return NextResponse.json(
-        { message: `Password must be at least ${VALIDATION_RULES.password.minLength} characters long` },
-        { status: 400 }
-      )
-    }
-
-    // Age validation
-    const birthDate = new Date(dateOfBirth)
-    const today = new Date()
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
-    if (age < 13) {
-      return NextResponse.json(
-        { message: 'You must be at least 13 years old to create an account' },
-        { status: 400 }
-      )
-    }
-
-    // Get database collection
-    const User = await getUserCollection()
+    // Connect to database
+    const client = await clientPromise
+    const db = client.db('voiceflow_auth')
+    const users = db.collection('users')
 
     // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
+    const existingUser = await users.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { username: username.toLowerCase() }
+      ]
     })
 
     if (existingUser) {
-      if (existingUser.email === email) {
-        return NextResponse.json(
-          { message: 'An account with this email already exists' },
-          { status: 400 }
-        )
-      } else {
-        return NextResponse.json(
-          { message: 'This username is already taken' },
-          { status: 400 }
-        )
-      }
+      return NextResponse.json(
+        { message: 'User with this email or username already exists' },
+        { status: 409 }
+      )
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user
+    // Create new user with our new field structure
     const newUser = {
-      name,
-      username,
-      email,
+      name: name.trim(),
+      username: username.toLowerCase().trim(),
+      email: email.toLowerCase().trim(),
       password: hashedPassword,
-      dateOfBirth: new Date(dateOfBirth),
-      gender,
-      phoneNumber,
-      provider: 'credentials',
-      emailVerified: false,
-      isActive: true,
-      profileComplete: true, // Manual signup has all required fields
-      lastLogin: null,
+      phoneNumber: phoneNumber.trim(),
+      bio: bio?.trim() || '', // Optional
+      avatar: '', // Optional, empty initially
+      emailVerified: null,
+      image: null,
       createdAt: new Date(),
       updatedAt: new Date()
     }
 
-    const result = await User.insertOne(newUser)
-
-    if (!result.insertedId) {
-      throw new Error('Failed to create user')
-    }
+    // Insert user
+    const result = await users.insertOne(newUser)
 
     return NextResponse.json(
       { 
         message: 'Account created successfully',
-        userId: result.insertedId
+        userId: result.insertedId 
       },
       { status: 201 }
     )
@@ -127,4 +89,25 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function GET(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  )
+}
+
+export async function PUT(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  )
+}
+
+export async function DELETE(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  )
 }

@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
 import { useTheme } from "next-themes"
 import { AppSidebarLink } from "./AppSidebarLink"
 import { NotificationLink } from "./NotificationLink"
+import { useOptimizedNavigation } from "@/hooks/use-optimized-navigation"
 import { 
   Home, 
   Search, 
@@ -25,11 +26,11 @@ import { CreatePostModal } from "@/components/post/CreatePostModal"
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const router = useRouter()
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [showMore, setShowMore] = useState(false)
+  const { navigateWithOptimization } = useOptimizedNavigation()
 
   useEffect(() => {
     setMounted(true)

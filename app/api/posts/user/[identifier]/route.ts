@@ -20,16 +20,27 @@ const getDatabases = async () => {
 function formatTimestamp(date: Date | string): string {
   if (!date) return 'now'
   
-  const now = new Date()
-  const postDate = new Date(date)
-  const diffInMs = now.getTime() - postDate.getTime()
-  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
-  const diffInDays = Math.floor(diffInHours / 24)
-  
-  if (diffInHours < 1) return 'now'
-  if (diffInHours < 24) return `${diffInHours}h`
-  if (diffInDays < 7) return `${diffInDays}d`
-  return postDate.toLocaleDateString()
+  try {
+    const now = new Date()
+    const postDate = new Date(date)
+    
+    // Check if the date is valid
+    if (isNaN(postDate.getTime())) {
+      return 'now'
+    }
+    
+    const diffInMs = now.getTime() - postDate.getTime()
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+    const diffInDays = Math.floor(diffInHours / 24)
+    
+    if (diffInHours < 1) return 'now'
+    if (diffInHours < 24) return `${diffInHours}h`
+    if (diffInDays < 7) return `${diffInDays}d`
+    return postDate.toLocaleDateString()
+  } catch (error) {
+    console.error('Error formatting timestamp:', error)
+    return 'now'
+  }
 }
 
 export async function GET(
@@ -47,7 +58,7 @@ export async function GET(
   
   try {
     // Connect to database - MongoDB Atlas
-    const { activities, auth } = await getDatabases()
+    const { profiles } = await getDatabases()
     
     // Try to determine if this is a username or email
     const isEmail = identifier.includes('@')
@@ -58,59 +69,48 @@ export async function GET(
       // Direct search by email
       query = { 'author.email': identifier }
     } else {
-      // First try to find the user by username to get email
-      const user = await auth.collection('users').findOne({ 
-        $or: [
-          { username: identifier },
-          { username: { $regex: new RegExp(`^${identifier}$`, 'i') } }
-        ]
-      })
-      
-      if (user) {
-        // Use the email from the found user
-        query = { 'author.email': user.email }
-      } else {
-        // Fallback to direct username search
-        query = { 'author.username': identifier }
-      }
+      // Search by username in author field
+      query = { 'author.email': { $regex: new RegExp(`${identifier}@`, 'i') } }
     }
     
+    console.log('🔍 Searching for posts with query:', query)
+    
     // Get posts from database, sorted by creation date (newest first)
-    const posts = await activities.collection('posts').find(query)
+    const posts = await profiles.collection('posts').find(query)
       .sort({ createdAt: -1 })
       .limit(50)
       .toArray()
       
-    // If we found posts, double-check the user exists before returning
-    if (posts.length > 0 && !isEmail) {
-      // Verify the user actually exists in the database
-      const firstPost = posts[0];
-      const authorEmail = firstPost.author?.email;
-      
-      if (authorEmail) {
-        // Try to fetch the user to ensure they exist and get latest data
-        const user = await auth.collection('users').findOne({ email: authorEmail });
-        if (user) {
-          console.log(`Found user ${user.username} for posts by identifier ${identifier}`);
-        }
-      }
-    }
+    console.log(`📊 Found ${posts.length} posts for user ${identifier}`)
     
-    // Transform posts to match frontend format with current user data
-    const formattedPosts = await Promise.all(posts.map(async (post) => {
-      // Get current user data from auth database
-      let currentUser: any = null
-      if (post.author?.email) {
-        currentUser = await auth.collection('users').findOne({ email: post.author.email })
-      }
+    // Get current user profile to get the latest username
+    const usersCollection = profiles.collection('users')
+    const userProfile = await usersCollection.findOne({ email: identifier })
+    
+    console.log(`🔍 User profile for ${identifier}:`, {
+      hasProfile: !!userProfile,
+      profileName: userProfile?.name,
+      profileUsername: userProfile?.username,
+      profileImage: userProfile?.image,
+      profileAvatar: userProfile?.avatar
+    })
+    
+    // Transform posts to match frontend format
+    const formattedPosts = posts.map((post) => {
+      console.log(`🔍 Post author data:`, {
+        authorName: post.author?.name,
+        authorEmail: post.author?.email,
+        authorImage: post.author?.image,
+        finalAvatar: userProfile?.image || post.author?.image || '/placeholder.svg'
+      })
       
       return {
         id: post._id.toString(),
         user: {
-          name: currentUser?.name || post.author?.name || 'Anonymous',
-          username: currentUser?.username || post.author?.username || post.author?.email?.split('@')[0] || 'anonymous',
-          avatar: currentUser?.image || post.author?.image || '/placeholder.svg',
-          verified: currentUser?.verified || post.author?.verified || false,
+          name: userProfile?.name || post.author?.name || 'Anonymous',
+          username: userProfile?.username || post.author?.email?.split('@')[0] || 'anonymous',
+          avatar: userProfile?.image || post.author?.image || '/placeholder.svg',
+          verified: false,
           email: post.author?.email,
         },
         content: post.content || '',
@@ -118,14 +118,14 @@ export async function GET(
         likes: post.likes || 0,
         replies: post.replies || 0,
         reposts: post.reposts || 0,
-        // Use the first image from the images array if available
-        image: post.images && post.images.length > 0 
-          ? `data:${post.images[0].type};base64,${post.images[0].data}` 
-          : null,
+        image: post.images && post.images.length > 0 ? post.images[0] : null,
+        images: post.images || [],
       }
-    }))
+    })
     
-    return NextResponse.json({ posts: formattedPosts })
+    console.log('📝 Formatted posts:', formattedPosts.length)
+    
+    return NextResponse.json(formattedPosts)
   } catch (error) {
     console.error('Error fetching user posts from MongoDB Atlas:', error)
     

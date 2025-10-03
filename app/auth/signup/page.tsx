@@ -26,13 +26,12 @@ export default function SignUpPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    dateOfBirth: '',
-    gender: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    bio: '' // Optional field
   })
   const router = useRouter()
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -81,25 +80,15 @@ export default function SignUpPage() {
       setError('Passwords do not match')
       return false
     }
-    if (!formData.dateOfBirth) {
-      setError('Date of birth is required')
-      return false
-    }
-    if (!formData.gender) {
-      setError('Gender is required')
-      return false
-    }
     if (!formData.phoneNumber.trim()) {
       setError('Phone number is required')
       return false
     }
 
-    // Age validation (must be 13 or older)
-    const birthDate = new Date(formData.dateOfBirth)
-    const today = new Date()
-    const age = today.getFullYear() - birthDate.getFullYear()
-    if (age < 13) {
-      setError('You must be at least 13 years old to create an account')
+    // Validate phone number format
+    const phoneRegex = /^\+?[\d\s\-\(\)\.]{10,}$/
+    if (!phoneRegex.test(formData.phoneNumber)) {
+      setError('Please enter a valid phone number')
       return false
     }
 
@@ -291,40 +280,18 @@ export default function SignUpPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                  <div className="relative">
-                    <Input
-                      id="dateOfBirth"
-                      name="dateOfBirth"
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={handleInputChange}
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="gender">Gender</Label>
-                  <Select
-                    value={formData.gender}
-                    onValueChange={(value) => handleSelectChange('gender', value)}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="bio">Bio <span className="text-xs text-muted-foreground">(Optional)</span></Label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  placeholder="Tell us a bit about yourself..."
+                  value={formData.bio}
+                  onChange={handleInputChange}
+                  disabled={isLoading}
+                  rows={3}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
               </div>
 
               <div className="space-y-2">

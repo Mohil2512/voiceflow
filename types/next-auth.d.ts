@@ -9,9 +9,8 @@ declare module 'next-auth' {
       email?: string | null
       image?: string | null
       username: string
-      dateOfBirth?: Date | null
-      gender?: string | null
       phoneNumber?: string | null
+      bio?: string | null
       profileComplete: boolean
     }
   }
@@ -22,9 +21,8 @@ declare module 'next-auth' {
     email?: string | null
     image?: string | null
     username?: string
-    dateOfBirth?: Date | null
-    gender?: string | null
     phoneNumber?: string | null
+    bio?: string | null
     profileComplete?: boolean
     emailVerified?: boolean
   }
@@ -34,9 +32,8 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id: string
     username?: string
-    dateOfBirth?: Date | null
-    gender?: string | null
     phoneNumber?: string | null
+    bio?: string | null
     profileComplete?: boolean
   }
 }

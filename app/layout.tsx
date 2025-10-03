@@ -4,7 +4,11 @@ import { getServerSession } from 'next-auth/next'
 import './globals.css'
 import { Providers } from './providers'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true
+})
 
 export const metadata: Metadata = {
   title: 'Voiceflow - Connect, Share, Grow',

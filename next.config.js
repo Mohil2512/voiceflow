@@ -1,21 +1,31 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Basic Next.js configuration optimized for Vercel deployment
+  // Performance optimizations
   reactStrictMode: false,
   swcMinify: true,
+  compress: true,
+  poweredByHeader: false,
   
   // Exclude problematic pages from the build
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   
+  // Performance optimizations
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-avatar', '@radix-ui/react-tabs'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
+  },
+  
   // Handle redirects for old Pages Router paths
   async redirects() {
-    return [
-      {
-        source: '/Notification',
-        destination: '/notification',
-        permanent: true,
-      },
-    ]
+    return []
   },
   
   images: {

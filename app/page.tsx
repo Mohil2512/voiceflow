@@ -1,16 +1,15 @@
-"use client"
+﻿"use client"
 
 import { useSession } from 'next-auth/react'
 import { PostCard } from "@/components/post/PostCard"
 import { Layout } from "@/components/layout/Layout"
 import { CreatePostModal } from "@/components/post/CreatePostModal"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAppData } from '@/providers/data-provider'
-import { useDataWithCache } from '@/hooks/use-data-cache'
 import { RefreshButton } from '@/components/ui/refresh-button'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/hooks/use-toast"
 
-// Define the post type to fix TypeScript errors
 interface Post {
   id: string;
   content: string;
@@ -28,99 +27,58 @@ interface Post {
   isLiked?: boolean;
   isReposted?: boolean;
   image?: string;
-  [key: string]: any; // Allow other properties
+  [key: string]: any;
 }
 
 export default function HomePage() {
   const { data: session, status } = useSession()
+  const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const { posts: cachedPosts, setPosts: setCachedPosts, wasRefreshed } = useAppData()
   
-  // Fetch posts with cache support
-  const { 
-    data: fetchedPosts, 
-    isLoading, 
-    refetch 
-  } = useDataWithCache(
-    'home-posts',
-    async () => {
-      try {
-        // Check for local draft posts first
-        const localPosts = localStorage.getItem('voiceflow_local_posts');
-        let combinedPosts: Post[] = [];
-        
-        // Fetch from API with cache-busting timestamp
-        const response = await fetch('/api/posts?timestamp=' + new Date().getTime());
-        if (response.ok) {
-          const data = await response.json();
-          combinedPosts = data.posts || [];
-          
-          // If we also have local posts, combine them
-          if (localPosts) {
-            const parsedLocalPosts = JSON.parse(localPosts) as Post[];
-            combinedPosts = [...parsedLocalPosts, ...combinedPosts];
-          }
-          
-          // Store in global cache
-          setCachedPosts(combinedPosts);
-          return combinedPosts;
-        } else {
-          console.error('Failed to fetch posts from API:', response.status);
-          throw new Error(`API returned ${response.status}`);
-        }
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-        throw error;
+  const fetchPosts = useCallback(async () => {
+    console.log('fetchPosts called')
+    
+    try {
+      setIsLoading(true)
+      console.log('Making API call to /api/posts')
+      const response = await fetch('/api/posts?timestamp=' + new Date().getTime());
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    },
-    {
-      // Only force refresh when user explicitly refreshes or clicks on logo
-      forceRefresh: wasRefreshed,
-      // Use cached posts if available and not forcing refresh
-      enabled: !cachedPosts || wasRefreshed
+      
+      const data = await response.json();
+      console.log('Fetched posts:', data.length || 0, 'posts');
+      
+      setPosts(data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      return [];
+    } finally {
+      setIsLoading(false)
     }
-  )
+  }, []) // No dependencies - using only local state
 
   useEffect(() => {
     setMounted(true)
-    
-    // Fetch current user data for profile picture
-    const fetchCurrentUser = async () => {
-      if (session?.user?.email) {
-        try {
-          const response = await fetch('/api/users/me')
-          if (response.ok) {
-            const data = await response.json()
-            setCurrentUser(data.user)
-          }
-        } catch (error) {
-          console.error('Error fetching current user:', error)
-        }
-      }
-    }
+  }, [])
 
-    fetchCurrentUser()
-    
-    // Add auto-refresh when page gets focus
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Clear cache and refetch posts when the page becomes visible again
-        localStorage.removeItem('voiceflow-home-posts')
-        refetch()
-      }
+  useEffect(() => {
+    if (mounted) {
+      console.log('HomePage useEffect: calling fetchPosts')
+      fetchPosts()
     }
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    // Auto-refresh once on page load
-    localStorage.removeItem('voiceflow-home-posts')
-    refetch()
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [session])
+  }, [mounted, fetchPosts])
+
+  const displayedPosts = useMemo(() => {
+    return posts.slice().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [posts])
+
+  const loading = isLoading && posts.length === 0
 
   if (status === 'loading' || !mounted) {
     return (
@@ -132,10 +90,13 @@ export default function HomePage() {
       </div>
     )
   }
-  
+
   // Use posts from cache or from fresh fetch
-  const posts = cachedPosts || fetchedPosts || []
-  const loading = isLoading && !posts.length
+  const postsToDisplay = cachedPosts || posts || []
+
+  if (!mounted) {
+    return null
+  }
 
   return (
     <Layout>
@@ -144,9 +105,9 @@ export default function HomePage() {
         <div className="flex-1 max-w-2xl bg-background text-foreground min-h-screen">
           <div className="sticky top-0 bg-background/90 backdrop-blur-md border-b border-border p-4 z-10 flex items-center justify-between">
             <h1 className="text-xl font-bold text-foreground">For you</h1>
-            <RefreshButton onRefresh={refetch} />
+            <RefreshButton onRefresh={fetchPosts} />
           </div>
-          
+
           {/* Create Post Section */}
           {session && (
             <div className="border-b border-border p-4">
@@ -154,13 +115,13 @@ export default function HomePage() {
                 trigger={
                   <div className="flex gap-3 cursor-pointer w-full">
                     <Avatar className="w-10 h-10 ring-1 ring-border">
-                      <AvatarImage src={currentUser?.image || session.user?.image || '/placeholder.svg'} alt="Your avatar" />
+                      <AvatarImage src={session.user?.image || '/placeholder.svg'} alt="Your avatar" />
                       <AvatarFallback className="bg-muted text-foreground">
-                        {currentUser?.name || session.user?.name ? (currentUser?.name || session.user?.name)[0].toUpperCase() : '?'}
+                        {session.user?.name ? session.user.name[0].toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <input 
+                      <input
                         type="text"
                         placeholder="What's new?"
                         className="w-full bg-transparent text-foreground placeholder-muted-foreground text-xl outline-none cursor-pointer"
@@ -175,13 +136,12 @@ export default function HomePage() {
                   </div>
                 }
                 onPostCreated={() => {
-                  // Refresh the posts when a new post is created
-                  refetch();
+                  fetchPosts();
                 }}
               />
             </div>
           )}
-          
+
           {/* Posts Feed */}
           <div>
             {loading ? (
@@ -189,20 +149,22 @@ export default function HomePage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
                 <p className="mt-2 text-muted-foreground">Loading posts...</p>
               </div>
-            ) : posts && posts.length > 0 ? (
-              posts.map((post: any) => (
-                <PostCard 
-                  key={post._id || post.id} 
-                  id={post._id || post.id}
+            ) : displayedPosts.length > 0 ? (
+              displayedPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  id={post.id}
                   user={post.user}
                   content={post.content}
-                  timestamp={post.createdAt || post.timestamp}
-                  likes={post.likesCount || post.likes || 0}
-                  replies={post.commentsCount || post.replies || 0}
-                  reposts={post.repostsCount || post.reposts || 0}
+                  timestamp={post.timestamp}
+                  likes={post.likes || 0}
+                  replies={post.replies || 0}
+                  reposts={post.reposts || 0}
                   image={post.image}
+                  images={post.images || []}
                   isLiked={post.isLiked || false}
                   isReposted={post.isReposted || false}
+                  onPostUpdate={fetchPosts}
                 />
               ))
             ) : (
@@ -220,12 +182,12 @@ export default function HomePage() {
               <h2 className="font-semibold mb-2">Welcome to Voiceflow</h2>
               <p className="text-sm text-muted-foreground">Share your thoughts with the world</p>
             </div>
-            
+
             <div className="bg-card rounded-lg shadow-sm p-4">
               <h2 className="font-semibold mb-4">Trending topics</h2>
               {[
                 "Software Development",
-                "Technology",
+                "Technology", 
                 "AI",
                 "Design",
                 "UX"

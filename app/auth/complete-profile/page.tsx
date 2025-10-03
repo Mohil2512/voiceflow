@@ -19,11 +19,13 @@ export default function CompleteProfilePage() {
   const [error, setError] = useState('')
   const [missingFields, setMissingFields] = useState<string[]>([])
   const [formData, setFormData] = useState({
-    dateOfBirth: '',
-    gender: '',
     phoneNumber: '',
-    username: ''
+    username: '',
+    bio: '', // Optional field
+    avatar: '' // Optional field - base64 data URL
   })
+
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -34,12 +36,10 @@ export default function CompleteProfilePage() {
     }
 
     if (session?.user) {
-      // Check which fields are missing
+      // Check which fields are missing - only phone number and username are mandatory
       const missing: string[] = []
       const user = session.user as any
 
-      if (!user.dateOfBirth) missing.push('dateOfBirth')
-      if (!user.gender) missing.push('gender')
       if (!user.phoneNumber) missing.push('phoneNumber')
       if (!user.username) missing.push('username')
 
@@ -53,20 +53,41 @@ export default function CompleteProfilePage() {
       
       // Pre-fill any existing data
       setFormData({
-        dateOfBirth: user.dateOfBirth || '',
-        gender: user.gender || '',
         phoneNumber: user.phoneNumber || '',
-        username: user.username || ''
+        username: user.username || '',
+        bio: user.bio || '', // Optional
+        avatar: user.image || '' // Optional
       })
     }
   }, [session, status, router])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     })
     setError('') // Clear error when user starts typing
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0]
+    if (!file) return
+
+    // Small client-side validation
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      setFormData({ ...formData, avatar: result })
+      setAvatarPreview(result)
+      setError('')
+    }
+    reader.onerror = () => setError('Failed to read image file')
+    reader.readAsDataURL(file)
   }
 
   const handleSelectChange = (name: string, value: string) => {
@@ -92,39 +113,19 @@ export default function CompleteProfilePage() {
       return false
     }
 
-    // Check date of birth if it's required
-    if (missingFields.includes('dateOfBirth') && !formData.dateOfBirth) {
-      setError('Date of birth is required')
-      return false
-    }
-
-    // Age validation
-    if (formData.dateOfBirth) {
-      const birthDate = new Date(formData.dateOfBirth)
-      const today = new Date()
-      let age = today.getFullYear() - birthDate.getFullYear()
-      const monthDiff = today.getMonth() - birthDate.getMonth()
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-      
-      if (age < 13) {
-        setError('You must be at least 13 years old')
-        return false
-      }
-    }
-
-    // Check gender if it's required
-    if (missingFields.includes('gender') && !formData.gender) {
-      setError('Gender is required')
-      return false
-    }
-
     // Check phone number if it's required
     if (missingFields.includes('phoneNumber') && !formData.phoneNumber.trim()) {
       setError('Phone number is required')
       return false
+    }
+
+    // Phone number format validation if provided
+    if (formData.phoneNumber) {
+      const phoneRegex = /^\+?[\d\s\-\(\)\.]{10,}$/
+      if (!phoneRegex.test(formData.phoneNumber)) {
+        setError('Please enter a valid phone number')
+        return false
+      }
     }
 
     return true
@@ -269,53 +270,6 @@ export default function CompleteProfilePage() {
                 </div>
               )}
 
-              {/* Date of Birth */}
-              {missingFields.includes('dateOfBirth') && (
-                <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth" className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Date of Birth
-                  </Label>
-                  <Input
-                    id="dateOfBirth"
-                    name="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    We use this to ensure you meet age requirements
-                  </p>
-                </div>
-              )}
-
-              {/* Gender */}
-              {missingFields.includes('gender') && (
-                <div className="space-y-2">
-                  <Label htmlFor="gender" className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Gender
-                  </Label>
-                  <Select
-                    value={formData.gender}
-                    onValueChange={(value) => handleSelectChange('gender', value)}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               {/* Phone Number */}
               {missingFields.includes('phoneNumber') && (
                 <div className="space-y-2">
@@ -338,6 +292,45 @@ export default function CompleteProfilePage() {
                   </p>
                 </div>
               )}
+
+              {/* Bio - Optional field */}
+              <div className="space-y-2">
+                <Label htmlFor="bio" className="flex items-center gap-2">
+                  Bio
+                  <span className="text-xs text-muted-foreground">(Optional)</span>
+                </Label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  placeholder="Tell us a bit about yourself..."
+                  value={formData.bio}
+                  onChange={handleInputChange}
+                  disabled={isLoading}
+                  rows={3}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              {/* Avatar / Profile picture */}
+              <div className="space-y-2">
+                <Label htmlFor="avatar" className="flex items-center gap-2">
+                  Profile picture
+                  <span className="text-xs text-muted-foreground">(Optional)</span>
+                </Label>
+                <input
+                  id="avatar"
+                  name="avatar"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  disabled={isLoading}
+                  className="mt-1"
+                />
+                {avatarPreview && (
+                  <img src={avatarPreview} alt="Avatar preview" className="mt-2 h-20 w-20 rounded-full object-cover" />
+                )}
+                <p className="text-xs text-muted-foreground">You can upload or change your profile picture now.</p>
+              </div>
 
               <div className="flex flex-col gap-2 pt-4">
                 <Button 

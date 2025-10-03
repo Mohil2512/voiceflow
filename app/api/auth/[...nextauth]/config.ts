@@ -6,7 +6,7 @@
 
 import type { NextAuthOptions } from "next-auth";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import clientPromise from '@/lib/mongodb-safe';
+import clientPromise from '@/lib/database/mongodb';
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 
@@ -51,6 +51,27 @@ export const authOptions: NextAuthOptions = {
   },
   
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // Allow all sign ins
+      return true;
+    },
+
+    async redirect({ url, baseUrl }) {
+      // If user is signing in, check if they need to complete their profile
+      if (url === baseUrl || url === `${baseUrl}/`) {
+        // This will be handled by the complete-profile page itself
+        return `${baseUrl}/auth/complete-profile`;
+      }
+      
+      // Allow relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      
+      // Allow callback URLs on the same origin
+      if (new URL(url).origin === baseUrl) return url;
+      
+      return baseUrl;
+    },
+
     async session({ session, token }) {
       if (token && session.user && token.sub) {
         session.user.id = token.sub;
@@ -64,19 +85,41 @@ export const authOptions: NextAuthOptions = {
         if (token.username) {
           session.user.username = token.username as string;
         }
+        
+        // Add other fields from database if available
+        if (token.phoneNumber) {
+          session.user.phoneNumber = token.phoneNumber as string;
+        }
+        
+        if (token.bio) {
+          session.user.bio = token.bio as string;
+        }
       }
       return session;
     },
     
     async jwt({ token, user, account, profile }) {
-      // Copy user image to token if available
-      if (user?.image) {
-        token.picture = user.image;
-      }
-      
-      // Copy username if available
-      if (user?.username) {
-        token.username = user.username;
+      // When user signs in for the first time
+      if (user) {
+        // Copy user image to token if available
+        if (user.image) {
+          token.picture = user.image;
+        }
+        
+        // Copy username if available
+        if (user.username) {
+          token.username = user.username;
+        }
+        
+        // Copy phone number if available
+        if (user.phoneNumber) {
+          token.phoneNumber = user.phoneNumber;
+        }
+        
+        // Copy bio if available
+        if (user.bio) {
+          token.bio = user.bio;
+        }
       }
       
       return token;

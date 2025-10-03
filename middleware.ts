@@ -1,18 +1,12 @@
 ﻿import { NextResponse } from 'next/server';
 
-// Simple redirect middleware for notification pages
+// Simple middleware - no redirects needed
 export function middleware(request) {
-  const { pathname } = request.nextUrl;
-  
-  // Handle case-sensitive notification path redirection
-  if (pathname.toLowerCase() === '/notification' && pathname !== '/notification') {
-    return NextResponse.redirect(new URL('/notification', request.url));
-  }
-  
+  // Just let all requests pass through normally
   return NextResponse.next();
 }
 
-// Define matcher patterns
+// Remove the problematic matcher
 export const config = {
-  matcher: ['/Notification', '/NOTIFICATION', '/notification'],
+  matcher: [],
 };

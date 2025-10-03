@@ -1,175 +1,175 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { getDatabases } from '@/lib/database/mongodb'
 
-// Force dynamic rendering for this route
-export const dynamic = "force-dynamic"
+export const dynamic = 'force-dynamic'
 
-// Import database functions
-const getDatabases = async () => {
-  if (!process.env.MONGODB_URI) {
-    throw new Error("MongoDB URI environment variable is not set")
-  }
+export async function GET(request: NextRequest) {
   try {
-    const { getDatabases: getDB } = await import("@/lib/database/mongodb")
-    return await getDB()
+    const session = await getServerSession()
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
+    // Return mock user profile
+    const mockProfile = {
+      id: session.user.email || 'user-id',
+      name: session.user.name || 'User',
+      email: session.user.email,
+      image: session.user.image || '/placeholder.svg',
+      username: session.user.name?.toLowerCase().replace(/\s+/g, '') || 'user',
+      bio: 'Welcome to my profile!',
+      isVerified: false,
+      profileImage: session.user.image || '/placeholder.svg'
+    }
+
+    return NextResponse.json(mockProfile)
   } catch (error) {
-    console.error("Database connection error:", error)
-    throw new Error(
-      "Failed to connect to MongoDB Atlas: " +
-        (error instanceof Error ? error.message : "Unknown error")
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
     )
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    // Check authentication
     const session = await getServerSession()
-    if (!session || !session.user?.email) {
+    
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
-    // Process form data
     const formData = await request.formData()
-    const name = formData.get("name") as string
-    const username = formData.get("username") as string
-    const bio = formData.get("bio") as string
-    const avatarFile = formData.get("avatar") as File | null
+    const name = formData.get('name') as string
+    const username = formData.get('username') as string
+    const bio = formData.get('bio') as string
+    const avatarFile = formData.get('avatar') as File | null
 
-    // Validate required fields
-    if (!name || !username) {
-      return NextResponse.json(
-        { error: "Name and username are required" },
-        { status: 400 }
-      )
+    let avatarUrl: string | null = null
+    
+    // Handle avatar upload if provided
+    if (avatarFile) {
+      // Convert to base64 for Cloudinary upload
+      const bytes = await avatarFile.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const base64 = `data:${avatarFile.type};base64,${buffer.toString('base64')}`
+      
+      // Upload to Cloudinary
+      const { uploadImage } = await import('@/lib/cloudinary')
+      try {
+        const uploadResult = await uploadImage(base64, 'profile')
+        if (uploadResult.success && uploadResult.data) {
+          avatarUrl = uploadResult.data.secure_url
+          console.log('✅ Avatar uploaded to Cloudinary:', avatarUrl)
+        } else {
+          console.error('❌ Failed to upload avatar:', uploadResult.error)
+        }
+      } catch (uploadError) {
+        console.error('❌ Failed to upload avatar:', uploadError)
+        // Continue without avatar update if upload fails
+      }
     }
 
-    // Create update object
-    const userUpdate: any = {
+    // Get MongoDB database
+    const { profiles } = await getDatabases()
+    const collection = profiles.collection('users')
+
+    // Get existing user profile to preserve current image if no new one uploaded
+    const existingProfile = await collection.findOne({ email: session.user.email })
+    console.log('🔍 DEBUG: Existing profile found:', existingProfile ? 'Yes' : 'No')
+    console.log('🔍 DEBUG: Existing profile image:', existingProfile?.image)
+    console.log('🔍 DEBUG: Session user image:', session.user.image)
+    
+    // Determine which image to use
+    let finalImageUrl = avatarUrl // Use new uploaded image if available
+    if (!finalImageUrl) {
+      // If no new image uploaded, use existing profile image or fall back to session image
+      finalImageUrl = existingProfile?.image || session.user.image
+    }
+    
+    console.log('🔍 DEBUG: Final image URL to save:', finalImageUrl)
+
+    // Prepare update data
+    const updateData: any = {
       name,
       username,
-      bio: bio || "",
+      bio,
+      image: finalImageUrl, // Always set image field
+      avatar: finalImageUrl, // Keep for backward compatibility
+      updatedAt: new Date()
     }
 
-    // If avatar was uploaded, process it
-    if (avatarFile && avatarFile instanceof File) {
-      try {
-        console.log("Processing avatar file:", avatarFile.name, avatarFile.type, avatarFile.size)
-        const arrayBuffer = await avatarFile.arrayBuffer()
-        const buffer = Buffer.from(arrayBuffer)
-        const base64Image = `data:${avatarFile.type};base64,${buffer.toString("base64")}`
-        userUpdate.image = base64Image
-        console.log("Avatar processed successfully, length:", base64Image.length)
-      } catch (error) {
-        console.error("Error processing avatar file:", error)
-        return NextResponse.json(
-          { error: "Failed to process image" },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Update user in database
-    const databases = await getDatabases()
-    
-    // Get the current user
-    const currentUser = await databases.auth.collection("users").findOne(
-      { email: session.user.email }
-    )
-    
-    // Check if the username is being changed
-    const isUsernameChanged = currentUser && currentUser.username !== username
-    
-    // Update user in database
-    console.log("Updating user in database with:", userUpdate)
-    const result = await databases.auth.collection("users").updateOne(
+    // Update user profile in database
+    const result = await collection.updateOne(
       { email: session.user.email },
-      { $set: userUpdate }
+      { 
+        $set: updateData,
+        $setOnInsert: {
+          email: session.user.email,
+          createdAt: new Date()
+        }
+      },
+      { upsert: true }
     )
-    console.log("Database update result:", result)
 
-    if (result.matchedCount === 0) {
-      // User doesn't exist, create new user record
-      await databases.auth.collection("users").insertOne({
-        email: session.user.email,
-        ...userUpdate,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-    } 
-    // If username was changed or avatar was uploaded, update references in posts and comments
-    else if ((isUsernameChanged || avatarFile) && currentUser) {
-      // Get user ID for reference
-      const userId = currentUser._id.toString()
-      
-      // Create update object for posts and comments
-      const updateFields: any = {}
-      
-      // Update username if changed
-      if (isUsernameChanged) {
-        updateFields.username = username
-        
-        // Update author.username in posts for display
-        await databases.activities.collection("posts").updateMany(
-          { userId: userId },
-          { $set: { "author.username": username } }
-        )
-        
-        // Log the username change
-        console.log(`Username changed for user ${userId} from ${currentUser.username} to ${username}`)
-      }
-      
-      // Update avatar if changed
-      if (avatarFile) {
-        // Update avatar in posts
-        await databases.activities.collection("posts").updateMany(
-          { userId: userId },
-          { $set: { "author.image": userUpdate.image } }
-        )
-        
-        // Log the avatar change
-        console.log(`Avatar updated for user ${userId}`)
-      }
-      
-      // Update posts with the relevant fields
-      if (Object.keys(updateFields).length > 0) {
-        await databases.activities.collection("posts").updateMany(
-          { userId: userId },
-          { $set: updateFields }
-        )
-        
-        // Update comments
-        await databases.activities.collection("comments").updateMany(
-          { userId: userId },
-          { $set: updateFields }
-        )
-      }
+    console.log('✅ Profile update result:', result)
+
+    // Get updated user data
+    const updatedUser = await collection.findOne({ email: session.user.email })
+
+    // Update all existing posts by this user to reflect the new profile data
+    const postsCollection = profiles.collection('posts')
+    const postUpdateData: any = {
+      'author.name': name,
+      'author.image': finalImageUrl // Always update author image in posts
     }
 
-    // Prepare response with actual image data if available
-    const updatedImageUrl = avatarFile ? userUpdate.image : session.user.image;
-    
-    return NextResponse.json({ 
-      message: "Profile updated successfully",
+    console.log('🔄 Updating posts with data:', postUpdateData)
+    console.log('🔄 Looking for posts with author.email:', session.user.email)
+
+    const postsUpdateResult = await postsCollection.updateMany(
+      { 'author.email': session.user.email },
+      { $set: postUpdateData }
+    )
+
+    console.log('✅ Updated posts result:', {
+      acknowledged: postsUpdateResult.acknowledged,
+      modifiedCount: postsUpdateResult.modifiedCount,
+      matchedCount: postsUpdateResult.matchedCount
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Profile updated successfully',
       user: {
-        name,
-        username,
-        bio,
-        email: session.user.email,
-        image: updatedImageUrl, // Return the actual image data
+        id: updatedUser?._id?.toString(),
+        name: updatedUser?.name,
+        username: updatedUser?.username,
+        bio: updatedUser?.bio,
+        image: updatedUser?.image || updatedUser?.avatar,
+        email: updatedUser?.email
       }
     })
   } catch (error) {
-    console.error("Error updating profile:", error)
+    console.error('❌ Profile update error:', error)
     return NextResponse.json(
-      {
-        error: "Failed to update profile",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
+      { error: 'Failed to update profile' },
       { status: 500 }
     )
   }
+}
+
+export async function DELETE(request: NextRequest) {
+  return NextResponse.json(
+    { message: 'Profile deleted successfully (mock)' },
+    { status: 200 }
+  )
 }

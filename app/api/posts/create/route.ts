@@ -1,146 +1,140 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../../auth/[...nextauth]/config'
+import { getDatabases } from '@/lib/database/mongodb'
+import { uploadImage } from '@/lib/cloudinary'
 
-// Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
-// Import database functions
-const getDatabases = async () => {
-  try {
-    const { getDatabases: getDB } = await import('@/lib/database/mongodb')
-    return await getDB();
-  } catch (error) {
-    console.error('Database connection error:', error);
-    throw new Error('Failed to connect to MongoDB Atlas: ' + (error instanceof Error ? error.message : 'Unknown error'));
-  }
-}
-
-const authOptions = {
-  // We'll get the session directly from the request headers
-  secret: process.env.NEXTAUTH_SECRET,
-}
-
 export async function POST(request: NextRequest) {
+  console.log('POST /api/posts/create - Creating post...')
+  
   try {
-    // Get session from the request
+    // Get user session
     const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      console.error('Authentication failed: No valid session')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!session?.user?.email || !session?.user?.name) {
+      return NextResponse.json(
+        { error: 'Authentication required - user must have name and email' },
+        { status: 401 }
+      )
     }
 
+    // Parse FormData instead of JSON
     const formData = await request.formData()
     const content = formData.get('content') as string
-    const images = formData.getAll('images') as File[]
-
-    console.log('Received post request:', { 
-      contentLength: content?.length || 0, 
-      hasContent: !!content?.trim(),
-      imagesCount: images.length,
-      user: session.user.email
-    })
-
-    if (!content?.trim() && images.length === 0) {
-      return NextResponse.json({ error: 'Post content cannot be empty' }, { status: 400 })
-    }
-
-    let imageData: { name: string; type: string; data: string; size: number; }[] = []
     
-    // Only process images if there are any
-    if (images && images.length > 0) {
-      try {
-        // For now, we'll store images as base64 in the database
-        // In production, you'd want to upload to a cloud storage service
-        imageData = await Promise.all(
-          images.map(async (image) => {
-            const bytes = await image.arrayBuffer()
-            const buffer = Buffer.from(bytes)
-            return {
-              name: image.name,
-              type: image.type,
-              data: buffer.toString('base64'),
-              size: image.size
-            }
-          })
-        )
-      } catch (imageError) {
-        console.error('Error processing images:', imageError)
-        return NextResponse.json({ error: 'Failed to process images' }, { status: 400 })
-      }
+    // Handle multiple image uploads
+    const imageFiles = formData.getAll('images') as File[]
+    let imageUrls: string[] = []
+
+    console.log('📝 Post creation request:')
+    console.log('  Content:', content)
+    console.log('  Image files count:', imageFiles.length)
+    console.log('  FormData keys:', Array.from(formData.keys()))
+    
+    if (imageFiles.length > 0) {
+      imageFiles.forEach((file, index) => {
+        console.log(`  Image ${index + 1}:`, {
+          name: file.name,
+          size: file.size,
+          type: file.type
+        })
+      })
     }
 
-    try {
-      const databases = await getDatabases()
-      const postsDb = databases.activities // Use activities database for posts
-      
-      // Get user data to ensure we have the correct username
-      const authDb = databases.auth;
-      const userData = await authDb.collection('users').findOne({ email: session.user.email });
-      
-      // Extract username for database consistency
-      const username = userData?.username || session.user.username || session.user.email?.split('@')[0] || 'user'
-      
-      const newPost = {
-        content: content || '',
-        images: imageData,
-        author: {
-          email: session.user.email,
-          image: userData?.image || session.user.image,
-          username: username
-        },
-        userId: userData?._id.toString(), // Store the user ID for database relationships
-        username: username, // Store the username directly in the post for consistency
-        createdAt: new Date(),
-        likes: 0,
-        replies: 0
-      }
+    if (!content || content.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Post content is required' },
+        { status: 400 }
+      )
+    }
 
-      const result = await postsDb.collection('posts').insertOne(newPost)
-      console.log('Post created successfully:', result.insertedId)
-
-      return NextResponse.json({ 
-        success: true, 
-        postId: result.insertedId,
-        message: 'Post created successfully' 
-      })
-    } catch (dbError) {
-      console.error('MongoDB Atlas operation error:', dbError)
+    // Upload images to Cloudinary if any
+    if (imageFiles.length > 0) {
+      console.log(`🔥 Uploading ${imageFiles.length} images to Cloudinary...`)
       
-      let errorMessage = 'Database operation failed';
-      let errorDetails = dbError instanceof Error ? dbError.message : 'Unknown database error';
-      let errorCode = 'DB_OPERATION_FAILED';
-      
-      // Provide more specific error messages
-      if (dbError instanceof Error) {
-        if (dbError.message.includes('SSL') || dbError.message.includes('TLS')) {
-          errorMessage = 'Failed to connect to MongoDB Atlas';
-          errorDetails = 'MongoDB Atlas SSL/TLS connection issue - check your SSL settings and certificates';
-          errorCode = 'MONGODB_SSL_ERROR';
-        } else if (dbError.message.includes('authentication failed')) {
-          errorMessage = 'MongoDB Atlas authentication failed';
-          errorDetails = 'Check your username and password in the connection string';
-          errorCode = 'MONGODB_AUTH_ERROR';
-        } else if (dbError.message.includes('timed out')) {
-          errorMessage = 'MongoDB Atlas connection timed out';
-          errorDetails = 'Check your network connection and MongoDB Atlas status';
-          errorCode = 'MONGODB_TIMEOUT';
+      for (const imageFile of imageFiles) {
+        if (imageFile && imageFile.size > 0) {
+          try {
+            console.log(`📤 Processing image: ${imageFile.name} (${imageFile.size} bytes)`)
+            
+            // Convert file to base64 for Cloudinary upload
+            const bytes = await imageFile.arrayBuffer()
+            const buffer = Buffer.from(bytes)
+            const base64 = `data:${imageFile.type};base64,${buffer.toString('base64')}`
+            
+            console.log('🔗 Base64 conversion complete, uploading to Cloudinary...')
+            
+            const uploadResult = await uploadImage(base64, {
+              public_id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              transformation: [
+                { width: 800, height: 600, crop: 'limit' },
+                { quality: 'auto' },
+                { fetch_format: 'auto' }
+              ]
+            })
+            
+            console.log('🔥 Cloudinary upload result:', uploadResult)
+            
+            if (uploadResult.success && uploadResult.data) {
+              imageUrls.push(uploadResult.data.secure_url)
+              console.log('✅ Image uploaded successfully:', uploadResult.data.secure_url)
+            } else {
+              console.error('❌ Failed to upload image:', uploadResult.error)
+            }
+          } catch (error) {
+            console.error('💥 Error processing image:', error)
+          }
+        } else {
+          console.log('⚠️ Skipping empty or invalid image file')
         }
       }
       
-      return NextResponse.json({ 
-        error: errorMessage, 
-        details: errorDetails,
-        code: errorCode
-      }, { status: 500 })
+      console.log(`📊 Final image URLs count: ${imageUrls.length}`)
+    } else {
+      console.log('📄 No images to upload')
     }
+
+    // Connect to database using getDatabases
+    const { profiles } = await getDatabases()
+    const collection = profiles.collection('posts')
+
+    // Create new post
+    const newPost = {
+      content: content.trim(),
+      author: {
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image || ''
+      },
+      images: imageUrls,
+      location: null,
+      createdAt: new Date(),
+      likes: 0,
+      replies: 0,
+      reposts: 0
+    }
+
+    // Insert post into database
+    const result = await collection.insertOne(newPost)
+
+    console.log('Post created successfully:', result.insertedId)
+
+    // Return success response
+    return NextResponse.json(
+      { 
+        success: true, 
+        postId: result.insertedId,
+        message: 'Post created successfully' 
+      },
+      { status: 201 }
+    )
 
   } catch (error) {
     console.error('Error creating post:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error',
-      code: 'INTERNAL_ERROR'
-    }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to create post' },
+      { status: 500 }
+    )
   }
 }

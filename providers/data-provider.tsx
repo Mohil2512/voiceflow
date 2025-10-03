@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { clearAllCache, useDetectPageRefresh } from "@/hooks/use-data-cache";
 
 // Define the shape of our data context
@@ -58,7 +58,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
   
   // Function to store posts with timestamp
-  const storePostsWithTimestamp = (newPosts: any[]) => {
+  const storePostsWithTimestamp = useCallback((newPosts: any[]) => {
     setPosts(newPosts);
     
     if (typeof window === 'undefined') return;
@@ -72,10 +72,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error storing posts in cache:", error);
     }
-  };
+  }, []);
   
   // Function to store users with timestamp
-  const storeUsersWithTimestamp = (newUsers: Record<string, any>) => {
+  const storeUsersWithTimestamp = useCallback((newUsers: Record<string, any>) => {
     setUsers(newUsers);
     
     if (typeof window === 'undefined') return;
@@ -89,14 +89,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error storing users in cache:", error);
     }
-  };
+  }, []);
   
   // Function to clear all cache
-  const clearCache = () => {
+  const clearCache = useCallback(() => {
     clearAllCache();
     setPosts(null);
     setUsers(null);
-  };
+  }, []);
   
   return (
     <DataContext.Provider

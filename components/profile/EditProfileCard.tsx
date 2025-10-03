@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -13,33 +13,47 @@ import { toast } from "@/components/ui/use-toast"
 import { X, Camera, Loader2 } from "lucide-react"
 
 interface EditProfileCardProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  currentUser: {
-    name: string
-    username: string
-    avatar: string
-    bio: string
-  }
-  onProfileUpdated?: () => void
+  isOpen: boolean
+  onClose: () => void
+  currentProfile: {
+    id?: string
+    name?: string | null
+    username?: string | null
+    image?: string | null
+    bio?: string | null
+    email?: string | null
+  } | null
+  onSuccess: (updatedProfile: any) => void
 }
 
 export function EditProfileCard({ 
-  open, 
-  onOpenChange, 
-  currentUser,
-  onProfileUpdated
+  isOpen, 
+  onClose, 
+  currentProfile,
+  onSuccess
 }: EditProfileCardProps) {
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   
-  const [name, setName] = useState(currentUser.name)
-  const [username, setUsername] = useState(currentUser.username)
-  const [bio, setBio] = useState(currentUser.bio)
-  const [avatar, setAvatar] = useState(currentUser.avatar)
+  const [name, setName] = useState(currentProfile?.name || '')
+  const [username, setUsername] = useState(currentProfile?.username || '')
+  const [bio, setBio] = useState(currentProfile?.bio || '')
+  const [avatar, setAvatar] = useState(currentProfile?.image || '')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Update form data when currentProfile changes
+  useEffect(() => {
+    if (currentProfile) {
+      setName(currentProfile.name || '')
+      setUsername(currentProfile.username || '')
+      setBio(currentProfile.bio || '')
+      setAvatar(currentProfile.image || '')
+      setAvatarPreview(null)
+      setAvatarFile(null)
+    }
+  }, [currentProfile])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -120,9 +134,9 @@ export function EditProfileCard({
       })
 
       // Close dialog and refresh page
-      onOpenChange(false)
-      if (onProfileUpdated) {
-        onProfileUpdated()
+      onClose()
+      if (onSuccess) {
+        onSuccess(updatedData.user)
       }
       router.refresh()
     } catch (error) {
@@ -138,7 +152,7 @@ export function EditProfileCard({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit profile</DialogTitle>
@@ -228,7 +242,7 @@ export function EditProfileCard({
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => onOpenChange(false)}
+              onClick={() => onClose()}
               disabled={isSubmitting}
             >
               Cancel
