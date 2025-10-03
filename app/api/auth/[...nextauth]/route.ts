@@ -92,11 +92,13 @@ const handler = NextAuth({
         console.log('Skipping database operations - MongoDB URI not available')
         // Set default user properties for temporary auth
         user.id = user.id || 'temp-' + Date.now()
-        user.profileComplete = false
-        user.username = user.email?.split('@')[0] || 'user'
-        user.dateOfBirth = null
-        user.gender = null
-        user.phoneNumber = null
+        // Only assign properties that exist in the User type
+        if ('profileComplete' in user) {
+          user.profileComplete = false
+        }
+        if ('username' in user) {
+          user.username = user.email?.split('@')[0] || 'user'
+        }
         return true
       }
       
@@ -146,22 +148,29 @@ const handler = NextAuth({
               }
             )
             user.id = existingUser._id.toString()
-            user.profileComplete = existingUser.profileComplete || false
-            user.username = existingUser.username
-            user.dateOfBirth = existingUser.dateOfBirth
-            user.gender = existingUser.gender
-            user.phoneNumber = existingUser.phoneNumber
+            // Only assign properties that exist in the User type
+            if ('profileComplete' in user) {
+              user.profileComplete = existingUser.profileComplete || false
+            }
+            if ('username' in user) {
+              user.username = existingUser.username
+            }
+            if ('phoneNumber' in user) {
+              user.phoneNumber = existingUser.phoneNumber
+            }
           }
         } catch (error) {
           console.error('OAuth sign in error:', error)
           // Instead of returning false, allow sign-in with temporary user data
           console.log('Database issue during sign-in, creating temporary session')
           user.id = user.id || 'temp-' + Date.now()
-          user.profileComplete = false
-          user.username = user.email?.split('@')[0] || 'user'
-          user.dateOfBirth = null
-          user.gender = null
-          user.phoneNumber = null
+          // Only assign properties that exist in the User type
+          if ('profileComplete' in user) {
+            user.profileComplete = false
+          }
+          if ('username' in user) {
+            user.username = user.email?.split('@')[0] || 'user'
+          }
         }
       }
       return true
@@ -170,10 +179,13 @@ const handler = NextAuth({
       if (user) {
         token.id = user.id
         token.username = user.username || user.email?.split('@')[0] || 'user'
-        token.dateOfBirth = user.dateOfBirth
-        token.gender = user.gender
-        token.phoneNumber = user.phoneNumber
-        token.profileComplete = user.profileComplete || false
+        // Only access properties that exist on the User type
+        if ('phoneNumber' in user) {
+          token.phoneNumber = user.phoneNumber
+        }
+        if ('profileComplete' in user) {
+          token.profileComplete = user.profileComplete || false
+        }
       }
 
       // Only refresh user data on explicit session update, not on every request
@@ -196,8 +208,6 @@ const handler = NextAuth({
       if (token) {
         session.user.id = token.id as string
         session.user.username = token.username as string
-        session.user.dateOfBirth = token.dateOfBirth as Date
-        session.user.gender = token.gender as string
         session.user.phoneNumber = token.phoneNumber as string
         session.user.profileComplete = token.profileComplete as boolean
       }
