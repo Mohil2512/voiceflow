@@ -32,14 +32,21 @@ export function Layout({ children }: LayoutProps) {
   // Always show layout with sidebar - authentication not required for viewing
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
-      {/* Fixed Left Sidebar */}
-      <div className="flex-shrink-0">
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <div className="hidden md:flex flex-shrink-0">
+        <AppSidebar />
+      </div>
+      
+      {/* Mobile Bottom Navigation - Visible only on mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
         <AppSidebar />
       </div>
       
       {/* Scrollable Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
+      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        <div className="max-w-full">
+          {children}
+        </div>
       </main>
     </div>
   )

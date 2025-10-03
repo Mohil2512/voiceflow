@@ -203,9 +203,9 @@ export function PostCard({
   }
 
   return (
-    <div className="border-b border-border p-4 hover:bg-accent/30 transition-colors">
+    <div className="border-b border-border p-3 md:p-4 hover:bg-accent/30 transition-colors">
       <div className="flex space-x-3">
-        <div onClick={handleUserClick} className="cursor-pointer">
+        <div onClick={handleUserClick} className="cursor-pointer flex-shrink-0">
           <Avatar className="w-10 h-10 ring-1 ring-border hover:ring-primary transition-all">
             <AvatarImage src={user?.avatar || user?.image || ''} alt={displayName} />
             <AvatarFallback className="bg-muted text-foreground">
@@ -216,19 +216,19 @@ export function PostCard({
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 min-w-0 flex-1">
               <span 
                 onClick={handleUserClick}
-                className="font-semibold text-foreground hover:underline cursor-pointer"
+                className="font-semibold text-foreground hover:underline cursor-pointer truncate"
               >
                 @{displayUsername}
               </span>
               {user?.verified && (
-                <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-primary-foreground text-xs">✓</span>
                 </div>
               )}
-              <span className="text-muted-foreground text-sm">
+              <span className="text-muted-foreground text-sm flex-shrink-0">
                 {(() => {
                   try {
                     const date = new Date(timestamp)
@@ -302,35 +302,35 @@ export function PostCard({
           </div>
           
           <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-4 md:space-x-8">
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center space-x-2 text-muted-foreground hover:text-red-500 p-0 h-auto transition-colors"
+                className="flex items-center space-x-1 md:space-x-2 text-muted-foreground hover:text-red-500 p-0 h-auto transition-colors"
                 onClick={handleLike}
               >
-                <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
-                {likesCount > 0 && <span className="text-sm">{likesCount}</span>}
+                <Heart className={`w-4 h-4 md:w-5 md:h-5 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
+                {likesCount > 0 && <span className="text-xs md:text-sm">{likesCount}</span>}
               </Button>
               
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
+                className="flex items-center space-x-1 md:space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
                 onClick={handleReply}
               >
-                <MessageCircle className="w-5 h-5" />
-                {replies > 0 && <span className="text-sm">{replies}</span>}
+                <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+                {replies > 0 && <span className="text-xs md:text-sm">{replies}</span>}
               </Button>
               
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center space-x-2 text-muted-foreground hover:text-green-500 p-0 h-auto transition-colors"
+                className="flex items-center space-x-1 md:space-x-2 text-muted-foreground hover:text-green-500 p-0 h-auto transition-colors"
                 onClick={handleRepost}
               >
-                <Repeat2 className={`w-5 h-5 ${reposted ? 'text-green-500' : ''}`} />
-                {repostsCount > 0 && <span className="text-sm">{repostsCount}</span>}
+                <Repeat2 className={`w-4 h-4 md:w-5 md:h-5 ${reposted ? 'text-green-500' : ''}`} />
+                {repostsCount > 0 && <span className="text-xs md:text-sm">{repostsCount}</span>}
               </Button>
             </div>
           </div>

@@ -84,44 +84,46 @@ export default function SearchPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-background text-foreground">
         {/* Search Header */}
-        <div className="sticky top-0 bg-black border-b border-gray-800 px-4 py-4">
-          <h1 className="text-xl font-semibold mb-4">Search</h1>
+        <div className="sticky top-0 bg-background/90 backdrop-blur-md border-b border-border px-3 md:px-4 py-4">
+          <h1 className="text-lg md:text-xl font-semibold mb-4">Search</h1>
           
           {/* Search Input */}
           <div className="relative">
-            <div className="flex items-center bg-gray-900 rounded-xl px-4 py-3">
-              <Search className="h-5 w-5 text-gray-400 mr-3" />
+            <div className="flex items-center bg-muted rounded-xl px-3 md:px-4 py-3">
+              <Search className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
               <input
                 type="text"
                 placeholder="Search for people and posts"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="flex-1 bg-transparent text-white placeholder-gray-400 outline-none"
+                className="flex-1 bg-transparent text-foreground placeholder-muted-foreground outline-none text-sm md:text-base"
               />
             </div>
           </div>
         </div>
 
         {/* Search Results */}
-        <div className="px-4 py-6">
+        <div className="px-3 md:px-4 py-6">
           {query.trim() ? (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 bg-gray-900">
-                <TabsTrigger value="people" className="flex items-center space-x-2 data-[state=active]:bg-gray-700">
+              <TabsList className="grid w-full grid-cols-2 bg-muted">
+                <TabsTrigger value="people" className="flex items-center space-x-1 md:space-x-2 data-[state=active]:bg-background text-xs md:text-sm">
                   <User className="h-4 w-4" />
-                  <span>People ({users.length})</span>
+                  <span className="hidden sm:inline">People ({users.length})</span>
+                  <span className="sm:hidden">({users.length})</span>
                 </TabsTrigger>
-                <TabsTrigger value="posts" className="flex items-center space-x-2 data-[state=active]:bg-gray-700">
+                <TabsTrigger value="posts" className="flex items-center space-x-1 md:space-x-2 data-[state=active]:bg-background text-xs md:text-sm">
                   <FileText className="h-4 w-4" />
-                  <span>Posts ({posts.length})</span>
+                  <span className="hidden sm:inline">Posts ({posts.length})</span>
+                  <span className="sm:hidden">({posts.length})</span>
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="people" className="mt-4">
                 {isLoading ? (
-                  <div className="text-center py-8 text-gray-400">Searching people...</div>
+                  <div className="text-center py-8 text-muted-foreground">Searching people...</div>
                 ) : users.length > 0 ? (
                   <div className="space-y-4">
                     {users.map((user) => (
@@ -129,8 +131,8 @@ export default function SearchPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-gray-400">
-                    <User className="mx-auto h-12 w-12 text-gray-600 mb-4" />
+                  <div className="text-center py-12 text-muted-foreground">
+                    <User className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
                     <p>No people found for "{query}"</p>
                   </div>
                 )}
@@ -138,7 +140,7 @@ export default function SearchPage() {
 
               <TabsContent value="posts" className="mt-4">
                 {isLoading ? (
-                  <div className="text-center py-8 text-gray-400">Searching posts...</div>
+                  <div className="text-center py-8 text-muted-foreground">Searching posts...</div>
                 ) : posts.length > 0 ? (
                   <div className="space-y-4">
                     {posts.map((post) => (
@@ -159,18 +161,18 @@ export default function SearchPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-gray-400">
-                    <FileText className="mx-auto h-12 w-12 text-gray-600 mb-4" />
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
                     <p>No posts found for "{query}"</p>
                   </div>
                 )}
               </TabsContent>
             </Tabs>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <Search className="mx-auto h-16 w-16 text-gray-600 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Search for anything</h2>
-              <p>Find people and posts by typing in the search box above</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <Search className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
+              <h2 className="text-lg md:text-xl font-semibold mb-2 text-foreground">Search for anything</h2>
+              <p className="text-sm md:text-base">Find people and posts by typing in the search box above</p>
             </div>
           )}
         </div>
@@ -187,41 +189,37 @@ function UserCard({ user }: UserCardProps) {
   const [isFollowed, setIsFollowed] = useState(false)
 
   return (
-    <div className="flex items-center justify-between py-3 px-4 hover:bg-gray-900 rounded-lg">
-      <div className="flex items-center space-x-3 flex-1">
-        <Avatar className="h-12 w-12">
+    <div className="flex items-center justify-between py-3 px-3 md:px-4 hover:bg-accent/30 rounded-lg">
+      <div className="flex items-center space-x-3 flex-1 min-w-0">
+        <Avatar className="h-12 w-12 flex-shrink-0">
           <AvatarImage src={user.image || ''} alt={user.name} />
-          <AvatarFallback className="bg-gray-700 text-white">
+          <AvatarFallback className="bg-muted text-foreground">
             {user.name?.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-1">
-            <span className="font-semibold text-white truncate">{user.username}</span>
+            <span className="font-semibold text-foreground truncate">{user.username}</span>
             {user.isVerified && (
-              <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <div className="w-4 h-4 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-2.5 h-2.5 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
             )}
           </div>
-          <p className="text-gray-400 text-sm truncate">{user.name}</p>
+          <p className="text-muted-foreground text-sm truncate">{user.name}</p>
           {user.bio && (
-            <p className="text-gray-300 text-sm mt-1 line-clamp-2">{user.bio}</p>
+            <p className="text-foreground text-sm mt-1 line-clamp-2">{user.bio}</p>
           )}
         </div>
       </div>
       
       <Button
         onClick={() => setIsFollowed(!isFollowed)}
-        className={`ml-4 px-6 py-1.5 rounded-lg text-sm font-semibold ${
-          isFollowed
-            ? 'bg-gray-800 text-white border border-gray-600 hover:bg-gray-700'
-            : 'bg-white text-black hover:bg-gray-100'
-        }`}
-        variant="ghost"
+        className="ml-2 md:ml-4 px-3 md:px-6 py-1.5 text-xs md:text-sm font-semibold flex-shrink-0"
+        variant={isFollowed ? "outline" : "default"}
       >
         {isFollowed ? 'Following' : 'Follow'}
       </Button>

@@ -12,9 +12,10 @@ interface AppSidebarLinkProps {
   icon: React.FC<{ className?: string }>
   isActive: boolean
   requiresAuth?: boolean
+  isMobile?: boolean
 }
 
-export function AppSidebarLink({ title, url, icon: Icon, isActive, requiresAuth = false }: AppSidebarLinkProps) {
+export function AppSidebarLink({ title, url, icon: Icon, isActive, requiresAuth = false, isMobile = false }: AppSidebarLinkProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const [isNavigating, setIsNavigating] = useState(false)
@@ -42,7 +43,10 @@ export function AppSidebarLink({ title, url, icon: Icon, isActive, requiresAuth 
       onClick={handleClick}
       prefetch={url !== '#'}
       className={cn(
-        "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-all duration-150 w-full",
+        "flex items-center rounded-xl text-left transition-all duration-150",
+        isMobile 
+          ? "flex-col gap-1 px-2 py-3 min-w-0" // Mobile: stacked layout, tighter spacing
+          : "gap-4 px-4 py-3 w-full", // Desktop: horizontal layout
         isActive
           ? "bg-accent text-accent-foreground font-medium"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
@@ -50,11 +54,15 @@ export function AppSidebarLink({ title, url, icon: Icon, isActive, requiresAuth 
       )}
     >
       <Icon className={cn(
-        "h-7 w-7 transition-all duration-150", 
+        "transition-all duration-150", 
+        isMobile ? "h-5 w-5" : "h-7 w-7", // Smaller icons on mobile
         isActive ? "stroke-2" : "stroke-1",
         isNavigating && "animate-pulse"
       )} />
-      <span className="text-xl font-normal">{title}</span>
+      <span className={cn(
+        "font-normal",
+        isMobile ? "text-xs leading-tight text-center" : "text-xl" // Smaller text on mobile
+      )}>{title}</span>
     </Link>
   )
 }

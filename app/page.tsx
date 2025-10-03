@@ -100,35 +100,35 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="flex gap-6 max-w-6xl mx-auto px-4">
+      <div className="flex gap-6 max-w-6xl mx-auto px-4 md:px-6">
         {/* Main Content */}
-        <div className="flex-1 max-w-2xl bg-background text-foreground min-h-screen">
-          <div className="sticky top-0 bg-background/90 backdrop-blur-md border-b border-border p-4 z-10 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground">For you</h1>
+        <div className="flex-1 max-w-2xl bg-background text-foreground min-h-screen w-full">
+          <div className="sticky top-0 bg-background/90 backdrop-blur-md border-b border-border p-3 md:p-4 z-10 flex items-center justify-between">
+            <h1 className="text-lg md:text-xl font-bold text-foreground">For you</h1>
             <RefreshButton onRefresh={fetchPosts} />
           </div>
 
           {/* Create Post Section */}
           {session && (
-            <div className="border-b border-border p-4">
+            <div className="border-b border-border p-3 md:p-4">
               <CreatePostModal
                 trigger={
                   <div className="flex gap-3 cursor-pointer w-full">
-                    <Avatar className="w-10 h-10 ring-1 ring-border">
+                    <Avatar className="w-10 h-10 ring-1 ring-border flex-shrink-0">
                       <AvatarImage src={session.user?.image || '/placeholder.svg'} alt="Your avatar" />
                       <AvatarFallback className="bg-muted text-foreground">
                         {session.user?.name ? session.user.name[0].toUpperCase() : '?'}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <input
                         type="text"
                         placeholder="What's new?"
-                        className="w-full bg-transparent text-foreground placeholder-muted-foreground text-xl outline-none cursor-pointer"
+                        className="w-full bg-transparent text-foreground placeholder-muted-foreground text-lg md:text-xl outline-none cursor-pointer"
                         readOnly
                       />
                       <div className="flex justify-end mt-3">
-                        <button className="bg-primary text-primary-foreground px-6 py-2 rounded-full font-medium hover:bg-primary/90 transition-colors">
+                        <button className="bg-primary text-primary-foreground px-4 py-2 md:px-6 md:py-2 rounded-full font-medium hover:bg-primary/90 transition-colors text-sm md:text-base">
                           Post
                         </button>
                       </div>
