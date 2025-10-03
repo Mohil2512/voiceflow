@@ -14,16 +14,9 @@ export function NotificationLink({ isActive }: NotificationLinkProps) {
   const router = useRouter()
 
   const handleClick = () => {
-    if (session) {
-      // User is authenticated, go directly to notification
-      console.log("User authenticated, going to notification page");
-      router.push('/notification');
-    } else {
-      // User is not authenticated, go to sign in
-      console.log("User not authenticated, going to sign in");
-      localStorage.setItem('redirectAfterLogin', '/notification');
-      router.push('/auth/signin?callbackUrl=/notification');
-    }
+    // Always go to notification page - let the page handle authentication
+    console.log("Going to notification page");
+    router.push('/notification');
   }
 
   return (

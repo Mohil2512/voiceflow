@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { AppSidebar } from "./AppSidebar"
+import { ThemeToggle } from "./AppSidebar"
 import { LoginPrompt } from "./LoginPrompt"
 import { useEffect, useState } from 'react'
 
@@ -37,13 +38,34 @@ export function Layout({ children }: LayoutProps) {
         <AppSidebar />
       </div>
       
+      {/* Mobile Header - Visible only on mobile */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="Voiceflow Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-lg text-foreground">Voiceflow</span>
+            </div>
+          </div>
+          
+          {/* Mobile Theme Toggle */}
+          <ThemeToggle mobile={true} />
+        </div>
+      </div>
+      
       {/* Mobile Bottom Navigation - Visible only on mobile */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
         <AppSidebar />
       </div>
       
       {/* Scrollable Main Content */}
-      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+      <main className="flex-1 overflow-y-auto pt-16 pb-16 md:pt-0 md:pb-0">
         <div className="max-w-full">
           {children}
         </div>

@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 import { PostCard } from "@/components/post/PostCard"
 import { Layout } from "@/components/layout/Layout"
 import { CreatePostModal } from "@/components/post/CreatePostModal"
@@ -178,9 +179,38 @@ export default function HomePage() {
         {/* Right sidebar - for Desktop/Tablet */}
         <div className="hidden md:block w-80 bg-background min-h-screen">
           <div className="sticky top-4 p-4">
+            {/* Login Card for Non-Logged Users */}
+            {!session && (
+              <div className="bg-card rounded-lg shadow-sm p-6 mb-4 border border-border">
+                <h2 className="font-bold text-xl mb-2">New to Voiceflow?</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Sign up now to get your own personalized timeline!
+                </p>
+                <div className="space-y-3">
+                  <Link
+                    href="/auth/signup"
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-full py-2 px-4 font-medium text-center block"
+                  >
+                    Create account
+                  </Link>
+                  <Link
+                    href="/auth/signin"
+                    className="w-full border border-border text-foreground hover:bg-accent transition-colors rounded-full py-2 px-4 font-medium text-center block"
+                  >
+                    Sign in
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Welcome Card for Logged Users or Generic Info */}
             <div className="bg-card rounded-lg shadow-sm p-4 mb-4">
-              <h2 className="font-semibold mb-2">Welcome to Voiceflow</h2>
-              <p className="text-sm text-muted-foreground">Share your thoughts with the world</p>
+              <h2 className="font-semibold mb-2">
+                {session ? `Welcome back, ${session.user?.name || 'User'}!` : 'Welcome to Voiceflow'}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {session ? 'Share your thoughts with your followers' : 'Share your thoughts with the world'}
+              </p>
             </div>
 
             <div className="bg-card rounded-lg shadow-sm p-4">

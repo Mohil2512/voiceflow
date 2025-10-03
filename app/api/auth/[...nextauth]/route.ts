@@ -224,7 +224,6 @@ const handler = NextAuth({
     }
   },
   pages: {
-    signIn: '/auth/signin',
     newUser: '/auth/complete-profile'
   },
   session: {

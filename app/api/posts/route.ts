@@ -1,4 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
 
 export const dynamic = 'force-dynamic'
@@ -31,20 +33,27 @@ export async function GET(request: Request) {
       
       console.log(`🔍 Profile lookup for ${post.author?.email}:`, {
         hasProfile: !!userProfile,
-        profileImage: userProfile?.image,
-        postAuthorImage: post.author?.image,
-        finalAvatar: userProfile?.image || post.author?.image || ''
+        profileUsername: userProfile?.username,
+        profileName: userProfile?.name,
+        postAuthorEmail: post.author?.email
       })
+      
+      // Better username fallback logic
+      const displayUsername = userProfile?.username || 
+                             post.author?.username || 
+                             userProfile?.name?.toLowerCase().replace(/\s+/g, '') ||
+                             post.author?.email?.split('@')[0] || 
+                             'anonymous'
       
       return {
         id: post._id.toString(),
         user: {
           name: userProfile?.name || post.author?.name || 'Anonymous',
-          username: userProfile?.username || post.author?.email?.split('@')[0] || 'anonymous',
+          username: displayUsername,
           avatar: userProfile?.image || post.author?.image || '',
           image: userProfile?.image || post.author?.image || '',
           email: post.author?.email || '',
-          verified: false
+          verified: userProfile?.isVerified || false
         },
         content: post.content,
         timestamp: (() => {
@@ -89,8 +98,17 @@ export async function POST(request: NextRequest) {
   try {
     console.log('POST /api/posts - Creating post...')
     
+    // Get user session first
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+    
     const body = await request.json()
-    const { content } = body
+    const { content, images = [] } = body
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json(
@@ -101,20 +119,27 @@ export async function POST(request: NextRequest) {
     
     const { profiles } = await getDatabases()
     
+    // Get user profile data
+    const userProfile = await profiles.collection('users').findOne({ email: session.user.email })
+    
     const newPost = {
       content: content.trim(),
       timestamp: new Date().toISOString(),
       createdAt: new Date(),
       author: {
-        id: 'anonymous',
-        name: 'Anonymous User',
-        email: 'anonymous@example.com',
-        username: 'anonymous'
+        id: session.user.id || session.user.email,
+        name: userProfile?.name || session.user.name || 'User',
+        email: session.user.email,
+        username: userProfile?.username || session.user.name?.toLowerCase().replace(/\s+/g, '') || session.user.email.split('@')[0],
+        image: userProfile?.image || session.user.image || ''
       },
+      images: images || [],
       likes: [],
       comments: [],
       reposts: []
     }
+    
+    console.log('Creating post with author data:', newPost.author)
     
     const result = await profiles.collection('posts').insertOne(newPost)
     console.log('Post created with ID:', result.insertedId)

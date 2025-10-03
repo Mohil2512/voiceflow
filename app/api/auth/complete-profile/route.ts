@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../[...nextauth]/config'
-import clientPromise from '@/lib/database/mongodb'
+import { getDatabases } from '@/lib/database/mongodb'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,44 +36,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Connect to database
-    const client = await clientPromise
-    const db = client.db('voiceflow_auth')
-    const users = db.collection('users')
+    // Connect to databases
+    const { auth, profiles } = await getDatabases()
+    const authUsers = auth.collection('users')
+    const profileUsers = profiles.collection('users')
 
-    // Check if username is already taken by another user
-    const existingUser = await users.findOne({
+    // Check if username is already taken by another user (check both databases)
+    const existingUserAuth = await authUsers.findOne({
+      username: username.toLowerCase(),
+      email: { $ne: session.user.email }
+    })
+    
+    const existingUserProfiles = await profileUsers.findOne({
       username: username.toLowerCase(),
       email: { $ne: session.user.email }
     })
 
-    if (existingUser) {
+    if (existingUserAuth || existingUserProfiles) {
       return NextResponse.json(
         { error: 'Username is already taken' },
         { status: 409 }
       )
     }
 
-    // Update user profile
+    // Update user profile in both databases
     const updateData = {
       phoneNumber: phoneNumber.trim(),
       username: username.toLowerCase().trim(),
       bio: bio?.trim() || '',
-      avatar: avatar || '',
+      image: avatar || session.user.image || '',
+      name: session.user.name || username,
       updatedAt: new Date()
     }
 
-    const result = await users.updateOne(
+    // Update in auth database
+    await authUsers.updateOne(
       { email: session.user.email },
-      { $set: updateData }
+      { $set: updateData },
+      { upsert: true }
     )
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
+    // Update in profiles database (used by posts API)
+    await profileUsers.updateOne(
+      { email: session.user.email },
+      { $set: updateData },
+      { upsert: true }
+    )
 
     return NextResponse.json(
       { 

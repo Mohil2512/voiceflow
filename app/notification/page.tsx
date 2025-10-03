@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Layout } from "@/components/layout/Layout";
+import { InlineLoginPrompt } from "@/components/layout/InlineLoginPrompt";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -144,17 +147,44 @@ function NotificationItem({ notification }: { notification: NotificationItem }) 
 }
 
 export default function ActivityPage() {
+  const { data: session, status } = useSession()
+  const [mounted, setMounted] = useState(false)
   const unreadCount = mockNotifications.filter(n => !n.read).length;
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
+
+  // Show loading state
+  if (status === 'loading') {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
+  // Show inline login prompt if not authenticated
+  if (status === 'unauthenticated') {
+    return <InlineLoginPrompt type="notification" />
+  }
 
   return (
     <Layout>
-      <div className="flex-1 max-w-2xl mx-auto bg-black text-white min-h-screen">
+      <div className="flex-1 max-w-2xl mx-auto bg-background text-foreground min-h-screen">
         {/* Header */}
-        <div className="sticky top-0 bg-black/95 backdrop-blur-md border-b border-gray-800 p-4 z-10">
+        <div className="sticky top-0 bg-background/95 backdrop-blur-md border-b border-border p-4 z-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-white">Activity</h1>
+            <h1 className="text-xl font-bold text-foreground">Activity</h1>
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="bg-blue-500 text-white">
+              <Badge variant="secondary" className="bg-primary text-primary-foreground">
                 {unreadCount} new
               </Badge>
             )}

@@ -6,6 +6,7 @@ import { PostCard } from '@/components/post/PostCard'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Layout } from '@/components/layout/Layout'
+import { InlineLoginPrompt } from '@/components/layout/InlineLoginPrompt'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EditProfileCard } from '@/components/profile/EditProfileCard'
@@ -117,10 +118,16 @@ export default function Profile() {
   }
 
   if (error || status === 'unauthenticated') {
+    // Show inline login prompt for unauthenticated users
+    if (status === 'unauthenticated') {
+      return <InlineLoginPrompt type="profile" />
+    }
+    
+    // Show error message for other errors
     return (
       <Layout>
         <div className="flex justify-center items-center min-h-screen">
-          <p className="text-center text-red-500">{error || 'Please sign in to view your profile'}</p>
+          <p className="text-center text-destructive">{error}</p>
         </div>
       </Layout>
     )

@@ -24,6 +24,65 @@ import {
 import { cn } from "@/lib/utils"
 import { CreatePostModal } from "@/components/post/CreatePostModal"
 
+// Separate Theme Toggle Component
+export function ThemeToggle({ mobile = false }: { mobile?: boolean }) {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return null
+  }
+
+  const handleThemeChange = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    
+    // Force update the DOM directly for immediate visual feedback
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+      document.documentElement.style.colorScheme = "dark";
+    } else {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+      document.documentElement.style.colorScheme = "light";
+    }
+  }
+
+  if (mobile) {
+    return (
+      <button
+        onClick={handleThemeChange}
+        className="p-2 rounded-lg transition-colors hover:bg-accent"
+      >
+        {theme === "dark" ? (
+          <Sun className="h-5 w-5 text-muted-foreground" />
+        ) : (
+          <Moon className="h-5 w-5 text-muted-foreground" />
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      onClick={handleThemeChange}
+      className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent"
+    >
+      {theme === "dark" ? (
+        <Sun className="h-5 w-5 text-muted-foreground" />
+      ) : (
+        <Moon className="h-5 w-5 text-muted-foreground" />
+      )}
+      <span className="text-xs text-muted-foreground">Theme</span>
+    </button>
+  )
+}
+
 export function AppSidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()

@@ -21,13 +21,7 @@ export function AppSidebarLink({ title, url, icon: Icon, isActive, requiresAuth 
   const [isNavigating, setIsNavigating] = useState(false)
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (requiresAuth && !session) {
-      e.preventDefault()
-      setIsNavigating(true)
-      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(url)}`)
-      return
-    }
-    
+    // Don't prevent navigation - let the pages handle their own authentication
     // Add immediate visual feedback
     setIsNavigating(true)
     
