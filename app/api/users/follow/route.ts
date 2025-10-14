@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import type { UpdateFilter, Document } from 'mongodb'
 import { authOptions } from '../../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
 
@@ -75,13 +76,13 @@ export async function POST(request: NextRequest) {
       // Remove target from current user's following list
       await usersCollection.updateOne(
         { email: currentUserEmail },
-        { $pull: { following: targetUserEmail } } as any
+        { $pull: { following: targetUserEmail } } as unknown as UpdateFilter<Document>
       )
 
       // Remove current user from target's followers list
       await usersCollection.updateOne(
         { email: targetUserEmail },
-        { $pull: { followers: currentUserEmail } } as any
+        { $pull: { followers: currentUserEmail } } as unknown as UpdateFilter<Document>
       )
     }
 
