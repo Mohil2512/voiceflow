@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, type Db } from 'mongodb'
 import mongoose from 'mongoose'
 
 const uri = process.env.MONGODB_URI || ''
@@ -40,9 +40,9 @@ const createMockDatabases = () => {
   }
   
   return {
-    auth: mockDb as any,
-    profiles: mockDb as any,
-    activities: mockDb as any
+    auth: mockDb as unknown as Db,
+    profiles: mockDb as unknown as Db,
+    activities: mockDb as unknown as Db
   }
 }
 

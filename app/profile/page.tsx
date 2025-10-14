@@ -45,7 +45,7 @@ interface Post {
     username?: string
     avatar?: string
     email?: string
-  }
+  } | null
   originalPostId?: string | null
   isRepostEntry?: boolean
 }
@@ -73,6 +73,7 @@ export default function Profile() {
         setError('Failed to load profile')
       }
     } catch (error) {
+      console.error('Error loading profile:', error)
       setError('Failed to load profile')
     } finally {
       setLoading(false)
@@ -237,7 +238,7 @@ export default function Profile() {
                     isLiked={post.isLiked || false}
                     isReposted={post.isReposted || false}
                     canEdit={post.canEdit}
-                    repostContext={post.repostContext}
+                    repostContext={post.repostContext ?? undefined}
                     originalPostId={post.originalPostId}
                     isRepostEntry={post.isRepostEntry}
                     onPostUpdate={() => {
@@ -280,7 +281,7 @@ export default function Profile() {
                     isLiked={post.isLiked || false}
                     isReposted={post.isReposted || false}
                     canEdit={post.canEdit}
-                    repostContext={post.repostContext}
+                    repostContext={post.repostContext ?? undefined}
                     originalPostId={post.originalPostId}
                     isRepostEntry={post.isRepostEntry}
                   />

@@ -1,8 +1,6 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
 import { Layout } from "@/components/layout/Layout"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -54,8 +52,7 @@ const getActivityIcon = (type: string) => {
 }
 
 export default function ActivityPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  const { status } = useSession()
 
   // Don't automatically redirect - let middleware handle authentication
   // This prevents redirect loops
@@ -116,7 +113,7 @@ export default function ActivityPage() {
       <div className="max-w-2xl mx-auto p-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Activity</h1>
-          <p className="text-muted-foreground">See what's happening with your posts and profile</p>
+          <p className="text-muted-foreground">See what&rsquo;s happening with your posts and profile</p>
         </div>
 
         <div className="space-y-4">
@@ -146,7 +143,7 @@ export default function ActivityPage() {
                         
                         {activity.post && (
                           <p className="text-sm text-muted-foreground mt-1 truncate">
-                            "{activity.post}"
+                            &ldquo;{activity.post}&rdquo;
                           </p>
                         )}
                       </div>

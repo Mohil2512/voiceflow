@@ -9,44 +9,39 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAppData } from '@/providers/data-provider'
 import { RefreshButton } from '@/components/ui/refresh-button'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useToast } from "@/hooks/use-toast"
+
+interface UserPayload {
+  name: string
+  username: string
+  avatar?: string
+  verified?: boolean
+  email?: string
+}
 
 interface Post {
-  id: string;
-  content: string;
-  timestamp: string;
-  user?: {
-    name: string;
-    username: string;
-    avatar?: string;
-    verified?: boolean;
-    email?: string;
-  };
-  likes?: number;
-  replies?: number;
-  reposts?: number;
-  isLiked?: boolean;
-  isReposted?: boolean;
-  image?: string;
-  canEdit?: boolean;
-  repostContext?: {
-    name?: string;
-    username?: string;
-    avatar?: string;
-    email?: string;
-  };
-  originalPostId?: string | null;
-  isRepostEntry?: boolean;
-  [key: string]: any;
+  id: string
+  content: string
+  timestamp: string
+  user?: UserPayload
+  likes?: number
+  replies?: number
+  reposts?: number
+  isLiked?: boolean
+  isReposted?: boolean
+  image?: string
+  images?: string[]
+  canEdit?: boolean
+  repostContext?: UserPayload | null
+  originalPostId?: string | null
+  isRepostEntry?: boolean
 }
 
 export default function HomePage() {
   const { data: session, status } = useSession()
-  const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
   const [posts, setPosts] = useState<Post[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const { posts: cachedPosts, setPosts: setCachedPosts, wasRefreshed } = useAppData()
+  const { posts: cachedPosts } = useAppData()
   
   const fetchPosts = useCallback(async () => {
     console.log('fetchPosts called')
@@ -71,7 +66,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false)
     }
-  }, []) // No dependencies - using only local state
+  }, [])
 
   useEffect(() => {
     setMounted(true)
@@ -84,9 +79,13 @@ export default function HomePage() {
     }
   }, [mounted, fetchPosts])
 
+  const postsSource = cachedPosts && cachedPosts.length > 0 ? cachedPosts : posts
+
   const displayedPosts = useMemo(() => {
-    return posts.slice().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [posts])
+    return postsSource
+      .slice()
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  }, [postsSource])
 
   const loading = isLoading && posts.length === 0
 
@@ -102,8 +101,6 @@ export default function HomePage() {
   }
 
   // Use posts from cache or from fresh fetch
-  const postsToDisplay = cachedPosts || posts || []
-
   if (!mounted) {
     return null
   }
@@ -175,7 +172,7 @@ export default function HomePage() {
                   isLiked={post.isLiked || false}
                   isReposted={post.isReposted || false}
                   canEdit={post.canEdit}
-                  repostContext={post.repostContext}
+                  repostContext={post.repostContext ?? undefined}
                   originalPostId={post.originalPostId}
                   isRepostEntry={post.isRepostEntry}
                   onPostUpdate={fetchPosts}

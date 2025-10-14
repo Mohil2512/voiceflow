@@ -91,21 +91,21 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   return NextResponse.json(
     { error: 'Method not allowed' },
     { status: 405 }
   )
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT() {
   return NextResponse.json(
     { error: 'Method not allowed' },
     { status: 405 }
   )
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   return NextResponse.json(
     { error: 'Method not allowed' },
     { status: 405 }

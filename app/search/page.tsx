@@ -28,10 +28,19 @@ interface Post {
     username: string
   }
   createdAt: string
-  likes: string[]
-  reposts: string[]
+  likes?: string[]
+  reposts?: string[]
+  images?: string[]
   isRepost?: boolean
-  originalPost?: any
+  originalPost?: {
+    content?: string
+    author?: {
+      name?: string
+      username?: string
+      image?: string | null
+      email?: string
+    }
+  }
 }
 
 export default function SearchPage() {
@@ -40,20 +49,6 @@ export default function SearchPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [activeTab, setActiveTab] = useState('people')
   const [isLoading, setIsLoading] = useState(false)
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (query.trim()) {
-        performSearch(query.trim())
-      } else {
-        setUsers([])
-        setPosts([])
-      }
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [query])
 
   const performSearch = useCallback(async (searchQuery: string) => {
     setIsLoading(true)
@@ -81,6 +76,20 @@ export default function SearchPage() {
       setIsLoading(false)
     }
   }, [])
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (query.trim()) {
+        performSearch(query.trim())
+      } else {
+        setUsers([])
+        setPosts([])
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [query, performSearch])
 
   return (
     <Layout>
@@ -133,7 +142,7 @@ export default function SearchPage() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <User className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <p>No people found for "{query}"</p>
+                    <p>No people found for &ldquo;{query}&rdquo;</p>
                   </div>
                 )}
               </TabsContent>
@@ -163,7 +172,7 @@ export default function SearchPage() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                    <p>No posts found for "{query}"</p>
+                    <p>No posts found for &ldquo;{query}&rdquo;</p>
                   </div>
                 )}
               </TabsContent>

@@ -1,5 +1,23 @@
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, type UploadApiOptions } from 'cloudinary';
 import { serverEnv } from './env';
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  if (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+    return (error as { message: string }).message
+  }
+  return 'Unknown error'
+}
+
+const getErrorCode = (error: unknown): number | undefined => {
+  if (error && typeof error === 'object' && 'http_code' in error) {
+    const code = (error as { http_code?: unknown }).http_code
+    return typeof code === 'number' ? code : undefined
+  }
+  return undefined
+}
 
 // Configure Cloudinary
 cloudinary.config({
@@ -17,12 +35,12 @@ export async function testCloudinaryConnection() {
     return { success: true, data: result };
   } catch (error) {
     console.error('Cloudinary connection failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
 // Upload image function
-export async function uploadImage(file: string, options: any = {}) {
+export async function uploadImage(file: string, options: Partial<UploadApiOptions> = {}) {
   try {
     if (!serverEnv.CLOUDINARY_CLOUD_NAME || !serverEnv.CLOUDINARY_API_KEY || !serverEnv.CLOUDINARY_API_SECRET) {
       return {
@@ -38,7 +56,7 @@ export async function uploadImage(file: string, options: any = {}) {
     console.log('  File type:', file.substring(0, 30) + '...')
     console.log('  Options:', options)
 
-    const defaultOptions = {
+    const defaultOptions: UploadApiOptions = {
       folder: 'voiceflow',
       resource_type: 'auto',
       format: 'webp',
@@ -49,10 +67,10 @@ export async function uploadImage(file: string, options: any = {}) {
       ]
     }
 
-    const mergedOptions = {
+    const mergedOptions: UploadApiOptions = {
       ...defaultOptions,
       ...options,
-      transformation: options?.transformation ?? defaultOptions.transformation
+      transformation: options.transformation ?? defaultOptions.transformation
     }
     
     const result = await cloudinary.uploader.upload(file, mergedOptions);
@@ -65,9 +83,12 @@ export async function uploadImage(file: string, options: any = {}) {
     return { success: true, data: result };
   } catch (error) {
     console.error('❌ Cloudinary upload failed:', error);
-    console.error('  Error message:', error.message);
-    console.error('  Error code:', error.http_code);
-    return { success: false, error: error.message || 'Unknown upload error' };
+    console.error('  Error message:', getErrorMessage(error));
+    const errorCode = getErrorCode(error)
+    if (errorCode) {
+      console.error('  Error code:', errorCode)
+    }
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -78,7 +99,7 @@ export async function deleteImage(publicId: string) {
     return { success: true, data: result };
   } catch (error) {
     console.error('Cloudinary delete failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

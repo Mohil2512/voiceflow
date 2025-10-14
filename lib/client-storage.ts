@@ -3,21 +3,21 @@
 // Safe client-side storage utility with fallbacks for SSR
 
 export const clientStorage = {
-  getItem(key: string, fallback: any = null): any {
+  getItem<T = unknown>(key: string, fallback: T | null = null): T | null {
     if (typeof window === 'undefined') {
       return fallback;
     }
     
     try {
       const item = localStorage.getItem(key);
-      return item !== null ? JSON.parse(item) : fallback;
+      return item !== null ? (JSON.parse(item) as T) : fallback;
     } catch (error) {
       console.error(`Error getting item ${key} from localStorage:`, error);
       return fallback;
     }
   },
   
-  setItem(key: string, value: any): void {
+  setItem<T>(key: string, value: T): void {
     if (typeof window === 'undefined') {
       return;
     }

@@ -1,10 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
+import type { InsertOneResult, WithId } from 'mongodb'
 import clientPromise from '@/lib/database/mongodb'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+type UserRecord = {
+  _id?: unknown
+  email: string
+  name?: string | null
+  image?: string | null
+  username?: string | null
+  bio?: string | null
+  isVerified?: boolean | null
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+type ProfileRecord = {
+  userId?: unknown
+  bio?: string | null
+  profileImage?: string | null
+}
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> => {
+  const timeoutPromise = new Promise<T>((_, reject) =>
+    setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
+  )
+  return Promise.race([promise, timeoutPromise])
+}
+
+export async function GET() {
   try {
     const session = await getServerSession()
     
@@ -16,24 +42,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Use direct client connection with timeout
-    const client = await Promise.race([
-      clientPromise,
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database connection timeout')), 10000)
-      )
-    ]) as any;
+    const client = await withTimeout(clientPromise, 10000, 'Database connection timeout')
 
     const db = client.db('voiceflow_auth')
-    const usersCollection = db.collection('users')
-    const profilesCollection = db.collection('profiles')
+    const usersCollection = db.collection<UserRecord>('users')
+    const profilesCollection = db.collection<ProfileRecord>('profiles')
 
     // Try to find user in database with timeout
-    let user = await Promise.race([
+    let user = await withTimeout(
       usersCollection.findOne({ email: session.user.email }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('User query timeout')), 8000)
-      )
-    ]) as any;
+      8000,
+      'User query timeout'
+    )
 
     if (!user) {
       // Create user if not exists (for OAuth users)
@@ -47,26 +67,24 @@ export async function GET(request: NextRequest) {
         updatedAt: new Date()
       }
 
-      const result = await Promise.race([
+      const result = await withTimeout<InsertOneResult<UserRecord>>(
         usersCollection.insertOne(newUser),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('User insert timeout')), 8000)
-        )
-      ]) as any;
-      
-      user = { ...newUser, _id: result.insertedId }
+        8000,
+        'User insert timeout'
+      )
+
+      user = { ...newUser, _id: result.insertedId } as WithId<UserRecord>
     }
 
     // Get additional profile information with timeout
-    const profile = await Promise.race([
-      profilesCollection.findOne({ userId: user._id }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile query timeout')), 5000)
-      )
-    ]) as any;
+    const profile = await withTimeout(
+      profilesCollection.findOne({ userId: (user as WithId<UserRecord>)._id }),
+      5000,
+      'Profile query timeout'
+    )
 
     const userResponse = {
-      id: user._id,
+      id: (user as WithId<UserRecord>)._id,
       name: user.name || user.username,
       email: user.email,
       image: user.image || profile?.profileImage || '/placeholder.svg',

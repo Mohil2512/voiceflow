@@ -14,12 +14,10 @@ export async function GET() {
     }
 
     // Try to connect with a timeout to prevent hanging
-    const client = await Promise.race([
-      clientPromise,
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('MongoDB Atlas connection timeout after 10000ms')), 10000)
-      )
-    ]) as any;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('MongoDB Atlas connection timeout after 10000ms')), 10000)
+    );
+    const client = await Promise.race([clientPromise, timeoutPromise]);
     
     // Perform a simple command to check connection
     await client.db('admin').command({ ping: 1 });

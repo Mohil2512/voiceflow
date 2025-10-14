@@ -12,18 +12,20 @@ import { Label } from "@/components/ui/label"
 import { toast } from "@/components/ui/use-toast"
 import { X, Camera, Loader2 } from "lucide-react"
 
+type ProfileData = {
+  id?: string
+  name?: string | null
+  username?: string | null
+  image?: string | null
+  bio?: string | null
+  email?: string | null
+}
+
 interface EditProfileCardProps {
   isOpen: boolean
   onClose: () => void
-  currentProfile: {
-    id?: string
-    name?: string | null
-    username?: string | null
-    image?: string | null
-    bio?: string | null
-    email?: string | null
-  } | null
-  onSuccess: (updatedProfile: any) => void
+  currentProfile: ProfileData | null
+  onSuccess: (updatedProfile: ProfileData) => void
 }
 
 export function EditProfileCard({ 
@@ -111,7 +113,7 @@ export function EditProfileCard({
       }
 
       // Get the updated user data from the response
-      const updatedData = await response.json();
+  const updatedData = await response.json() as { user: ProfileData };
       
       // Update the session with new user data (but not the large image data)
       if (session) {
@@ -135,7 +137,7 @@ export function EditProfileCard({
 
       // Close dialog and refresh page
       onClose()
-      if (onSuccess) {
+      if (onSuccess && updatedData.user) {
         onSuccess(updatedData.user)
       }
       router.refresh()

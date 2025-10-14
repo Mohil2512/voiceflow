@@ -4,7 +4,8 @@ import { getDatabases } from '@/lib/database/mongodb'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
+  void _request
   try {
     const session = await getServerSession()
     
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(mockProfile)
   } catch (error) {
+    console.error('Failed to load profile:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -47,7 +49,7 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const formData = await request.formData()
+  const formData = await request.formData()
     const name = formData.get('name') as string
     const username = formData.get('username') as string
     const bio = formData.get('bio') as string
@@ -98,7 +100,7 @@ export async function PUT(request: NextRequest) {
     console.log('🔍 DEBUG: Final image URL to save:', finalImageUrl)
 
     // Prepare update data
-    const updateData: any = {
+  const updateData: Record<string, unknown> = {
       name,
       username,
       bio,
@@ -127,7 +129,7 @@ export async function PUT(request: NextRequest) {
 
     // Update all existing posts by this user to reflect the new profile data
     const postsCollection = profiles.collection('posts')
-    const postUpdateData: any = {
+  const postUpdateData: Record<string, unknown> = {
       'author.name': name,
       'author.image': finalImageUrl // Always update author image in posts
     }
@@ -167,7 +169,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   return NextResponse.json(
     { message: 'Profile deleted successfully (mock)' },
     { status: 200 }

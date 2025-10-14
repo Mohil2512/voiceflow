@@ -11,6 +11,7 @@ import { EditPostModal } from "./EditPostModal"
 import { ImageModal } from "@/components/ui/image-modal"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 interface PostCardProps {
   id?: string
@@ -383,19 +384,20 @@ export function PostCard({
                     className="rounded-xl overflow-hidden border border-border cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => handleImageClick(index)}
                   >
-                    <img
+                    <Image
                       src={imageUrl}
                       alt={`Post image ${index + 1}`}
+                      width={800}
+                      height={600}
+                      unoptimized
                       className="w-full max-h-80 object-cover"
-                      onError={(e) => {
+                      onError={(event) => {
                         console.error('❌ Image failed to load:', imageUrl)
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
+                        event.currentTarget.style.display = 'none'
                       }}
-                      onLoad={(e) => {
+                      onLoadingComplete={(img) => {
                         console.log('✅ Image loaded successfully:', imageUrl)
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'block';
+                        img.style.display = 'block'
                       }}
                     />
                   </div>

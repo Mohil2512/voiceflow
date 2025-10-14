@@ -107,14 +107,14 @@ function NotificationItem({ notification }: { notification: NotificationItem }) 
           {/* Show comment content if it's a comment */}
           {notification.type === 'comment' && notification.content && (
             <p className="text-gray-400 text-sm mt-2 italic">
-              "{notification.content}"
+              &ldquo;{notification.content}&rdquo;
             </p>
           )}
 
           {/* Show mention content if it's a mention */}
           {notification.type === 'mention' && notification.content && (
             <p className="text-gray-400 text-sm mt-2 italic">
-              "{notification.content}"
+              &ldquo;{notification.content}&rdquo;
             </p>
           )}
 
@@ -147,7 +147,7 @@ function NotificationItem({ notification }: { notification: NotificationItem }) 
 }
 
 export default function ActivityPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const [mounted, setMounted] = useState(false)
   const unreadCount = mockNotifications.filter(n => !n.read).length;
 
@@ -226,7 +226,7 @@ export default function ActivityPage() {
                 <Heart className="h-16 w-16 text-gray-600 mb-4" />
                 <h2 className="text-xl font-semibold text-gray-300 mb-2">No activity yet</h2>
                 <p className="text-gray-500 text-center">
-                  When people interact with your posts, you'll see it here.
+                  When people interact with your posts, you&rsquo;ll see it here.
                 </p>
               </div>
             )}
@@ -244,7 +244,7 @@ export default function ActivityPage() {
                   <AtSign className="h-16 w-16 text-gray-600 mb-4" />
                   <h2 className="text-xl font-semibold text-gray-300 mb-2">No mentions yet</h2>
                   <p className="text-gray-500 text-center">
-                    When someone mentions you, you'll see it here.
+                    When someone mentions you, you&rsquo;ll see it here.
                   </p>
                 </div>
               )}

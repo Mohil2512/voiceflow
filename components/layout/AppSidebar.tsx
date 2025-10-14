@@ -3,23 +3,20 @@
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import Link from "next/link"
+import Image from "next/image"
 import { useTheme } from "next-themes"
 import { AppSidebarLink } from "./AppSidebarLink"
 import { NotificationLink } from "./NotificationLink"
-import { useOptimizedNavigation } from "@/hooks/use-optimized-navigation"
 import { 
   Home, 
   Search, 
   Heart, 
-  MessageCircle, 
   User, 
   LogOut, 
   Sun, 
   Moon,
   PlusSquare,
-  Menu,
-  Monitor
+  Menu
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CreatePostModal } from "@/components/post/CreatePostModal"
@@ -89,8 +86,6 @@ export function AppSidebar() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [showMore, setShowMore] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const { navigateWithOptimization } = useOptimizedNavigation()
 
   useEffect(() => {
     setMounted(true)
@@ -226,10 +221,13 @@ export function AppSidebar() {
           <div className="mb-8 px-2">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full flex items-center justify-center">
-                <img
+                <Image
                   src="/logo.png"
                   alt="Voiceflow Logo"
+                  width={32}
+                  height={32}
                   className="w-full h-full object-contain"
+                  priority
                 />
               </div>
               <div className="flex flex-col">

@@ -1,15 +1,16 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, User, Phone, Users } from 'lucide-react'
+import { User, Phone } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
 export default function CompleteProfilePage() {
@@ -38,7 +39,13 @@ export default function CompleteProfilePage() {
     if (session?.user) {
       // Check which fields are missing - only phone number and username are mandatory
       const missing: string[] = []
-      const user = session.user as any
+      type SessionUserDetails = {
+        phoneNumber?: string
+        username?: string
+        bio?: string
+        image?: string
+      }
+      const user = session.user as SessionUserDetails
 
       if (!user.phoneNumber) missing.push('phoneNumber')
       if (!user.username) missing.push('username')
@@ -61,7 +68,7 @@ export default function CompleteProfilePage() {
     }
   }, [session, status, router])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -69,7 +76,7 @@ export default function CompleteProfilePage() {
     setError('') // Clear error when user starts typing
   }
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0]
     if (!file) return
 
@@ -88,14 +95,6 @@ export default function CompleteProfilePage() {
     }
     reader.onerror = () => setError('Failed to read image file')
     reader.readAsDataURL(file)
-  }
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({
-      ...formData,
-      [name]: value
-    })
-    setError('')
   }
 
   const validateForm = () => {
@@ -131,7 +130,7 @@ export default function CompleteProfilePage() {
     return true
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     if (!validateForm()) return
@@ -176,9 +175,10 @@ export default function CompleteProfilePage() {
       // Redirect to main home page (not dashboard)
       router.push('/')
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Profile completion error:', error)
-      setError(error.message || 'An error occurred while updating your profile')
+      const message = error instanceof Error ? error.message : 'An error occurred while updating your profile'
+      setError(message)
     } finally {
       setIsLoading(false)
     }
@@ -327,7 +327,14 @@ export default function CompleteProfilePage() {
                   className="mt-1"
                 />
                 {avatarPreview && (
-                  <img src={avatarPreview} alt="Avatar preview" className="mt-2 h-20 w-20 rounded-full object-cover" />
+              <Image
+                src={avatarPreview}
+                alt="Avatar preview"
+                width={80}
+                height={80}
+                unoptimized
+                className="mt-2 h-20 w-20 rounded-full object-cover"
+              />
                 )}
                 <p className="text-xs text-muted-foreground">You can upload or change your profile picture now.</p>
               </div>

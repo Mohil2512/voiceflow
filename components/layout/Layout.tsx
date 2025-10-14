@@ -1,9 +1,9 @@
 "use client"
 
 import { useSession } from 'next-auth/react'
+import Image from 'next/image'
 import { AppSidebar } from "./AppSidebar"
 import { ThemeToggle } from "./AppSidebar"
-import { LoginPrompt } from "./LoginPrompt"
 import { useEffect, useState } from 'react'
 
 interface LayoutProps {
@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -43,10 +43,13 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center">
-              <img
+              <Image
                 src="/logo.png"
                 alt="Voiceflow Logo"
+                width={32}
+                height={32}
                 className="w-full h-full object-contain"
+                priority
               />
             </div>
             <div className="flex flex-col">

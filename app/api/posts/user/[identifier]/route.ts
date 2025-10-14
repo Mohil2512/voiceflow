@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import type { Document, WithId } from 'mongodb'
 import { authOptions } from '../../../auth/[...nextauth]/config'
 
 // Force dynamic rendering for this route
@@ -19,15 +20,69 @@ const getDatabases = async () => {
   }
 }
 
-const buildUserPayload = (primaryProfile: any, fallbackAuthor: any) => {
-  const fallbackEmail = fallbackAuthor?.email || ''
-  const name = primaryProfile?.name || fallbackAuthor?.name || 'Anonymous'
-  const username = primaryProfile?.username ||
-    fallbackAuthor?.username ||
-    primaryProfile?.name?.toLowerCase()?.replace(/\s+/g, '') ||
-    fallbackEmail.split('@')[0] ||
+type ProfileLike = {
+  email?: string | null
+  name?: string | null
+  username?: string | null
+  image?: string | null
+  isVerified?: boolean | null
+}
+
+type AuthorLike = {
+  email?: string | null
+  name?: string | null
+  username?: string | null
+  image?: string | null
+}
+
+type PostDocument = WithId<Document> & {
+  author?: AuthorLike | null
+  originalAuthor?: AuthorLike | null
+  likedBy?: unknown
+  repostedBy?: unknown
+  likes?: number
+  reposts?: number
+  comments?: unknown
+  replies?: number
+  content?: unknown
+  images?: unknown
+  createdAt?: Date | string
+  timestamp?: string
+  originalPostId?: unknown
+  isRepost?: unknown
+}
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined
+
+const toAuthorLike = (value: unknown): AuthorLike => {
+  if (value && typeof value === 'object') {
+    const candidate = value as Record<string, unknown>
+    return {
+      email: asString(candidate.email),
+      name: asString(candidate.name),
+      username: asString(candidate.username),
+      image: asString(candidate.image)
+    }
+  }
+  return {}
+}
+
+const buildUserPayload = (
+  primaryProfile: ProfileLike | null | undefined,
+  fallbackAuthor: AuthorLike | null | undefined
+) => {
+  const fallbackEmail = asString(fallbackAuthor?.email) ?? ''
+  const primaryName = asString(primaryProfile?.name)
+  const fallbackName = asString(fallbackAuthor?.name)
+  const name = primaryName ?? fallbackName ?? 'Anonymous'
+  const username =
+    asString(primaryProfile?.username) ??
+    asString(fallbackAuthor?.username) ??
+    (primaryName ? primaryName.toLowerCase().replace(/\s+/g, '') : undefined) ??
+    (fallbackEmail ? fallbackEmail.split('@')[0] : undefined) ??
     'anonymous'
-  const image = primaryProfile?.image || fallbackAuthor?.image || ''
+  const image = asString(primaryProfile?.image) ?? asString(fallbackAuthor?.image) ?? ''
   const verified = Boolean(primaryProfile?.isVerified)
 
   return {
@@ -40,27 +95,28 @@ const buildUserPayload = (primaryProfile: any, fallbackAuthor: any) => {
   }
 }
 
-const normalizeId = (value: any) => {
+const normalizeId = (value: unknown) => {
   if (!value) {
     return null
   }
   if (typeof value === 'string') {
     return value
   }
-  if (typeof value === 'object' && typeof value.toString === 'function') {
-    return value.toString()
+  if (typeof value === 'object' && typeof (value as { toString?: () => string }).toString === 'function') {
+    return (value as { toString: () => string }).toString()
   }
   try {
     return String(value)
-  } catch (error) {
+  } catch {
     return null
   }
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { identifier: string } }
 ) {
+  void _request
   const rawIdentifier = params.identifier
 
   if (!rawIdentifier) {
@@ -94,7 +150,7 @@ export async function GET(
     }
 
     const postsCollection = profiles.collection('posts')
-    const posts = await postsCollection.find({
+    const posts = (await postsCollection.find({
       'author.email': userEmail,
       $or: [
         { isRepost: { $exists: false } },
@@ -103,32 +159,49 @@ export async function GET(
     })
       .sort({ createdAt: -1 })
       .limit(100)
-      .toArray()
+      .toArray()) as PostDocument[]
 
-    const relatedEmails = Array.from(new Set(
-      posts.flatMap(post => [post.author?.email, post.originalAuthor?.email]).filter(Boolean) as string[]
-    ))
+    const relatedEmails = Array.from(
+      new Set(
+        posts
+          .flatMap((post) => [asString(post.author?.email), asString(post.originalAuthor?.email)])
+          .filter((email): email is string => Boolean(email))
+      )
+    )
 
     const profileDocs = relatedEmails.length > 0
       ? await usersCollection.find({ email: { $in: relatedEmails } }).toArray()
       : []
 
-    const profileMap = new Map<string, any>()
+    const profileMap = new Map<string, ProfileLike>()
     profileDocs.forEach(doc => {
-      if (doc?.email) {
-        profileMap.set(doc.email, doc)
+      if (doc && typeof doc === 'object') {
+        const record = doc as Record<string, unknown>
+        const email = asString(record.email)
+        if (email) {
+          profileMap.set(email, {
+            email,
+            name: asString(record.name) ?? null,
+            username: asString(record.username) ?? null,
+            image: asString(record.image) ?? null,
+            isVerified: typeof record.isVerified === 'boolean' ? record.isVerified : null
+          })
+        }
       }
     })
 
     const formattedPosts = posts.map((post) => {
-      const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
-      const repostedBy = Array.isArray(post.repostedBy) ? post.repostedBy : []
+      const likedByRaw = Array.isArray(post.likedBy) ? post.likedBy : []
+      const repostedByRaw = Array.isArray(post.repostedBy) ? post.repostedBy : []
+      const likedBy = likedByRaw.filter((email): email is string => typeof email === 'string')
+      const repostedBy = repostedByRaw.filter((email): email is string => typeof email === 'string')
       const likesCount = likedBy.length || (typeof post.likes === 'number' ? post.likes : 0)
       const repostsCount = repostedBy.length || (typeof post.reposts === 'number' ? post.reposts : 0)
       const content = typeof post.content === 'string' ? post.content : ''
 
-      const authorProfile = post.author?.email ? profileMap.get(post.author.email) : null
-      const displayUser = buildUserPayload(authorProfile, post.author)
+      const author = toAuthorLike(post.author)
+      const authorProfile = author.email ? profileMap.get(author.email) : null
+      const displayUser = buildUserPayload(authorProfile, author)
 
       const timestamp = (() => {
         if (post.createdAt) {
@@ -150,11 +223,15 @@ export async function GET(
         likes: likesCount,
         replies: Array.isArray(post.comments) ? post.comments.length : (post.replies || 0),
         reposts: repostsCount,
-        image: Array.isArray(post.images) && post.images.length > 0 ? post.images[0] : null,
-        images: Array.isArray(post.images) ? post.images : [],
+        image: Array.isArray(post.images) && post.images.length > 0 && typeof post.images[0] === 'string'
+          ? post.images[0]
+          : null,
+        images: Array.isArray(post.images)
+          ? post.images.filter((img): img is string => typeof img === 'string')
+          : [],
         isLiked: currentUserEmail ? likedBy.includes(currentUserEmail) : false,
         isReposted: currentUserEmail ? repostedBy.includes(currentUserEmail) : false,
-        canEdit: currentUserEmail ? (currentUserEmail === post.author?.email && !post.isRepost) : false,
+        canEdit: currentUserEmail ? (currentUserEmail === author.email && !post.isRepost) : false,
         repostContext: null,
         originalPostId: normalizeId(post.originalPostId),
         isRepostEntry: Boolean(post.isRepost)

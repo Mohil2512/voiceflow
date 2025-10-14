@@ -20,7 +20,7 @@ export default function GlobalError({
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
           <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
           <p className="text-muted-foreground mb-6 max-w-md text-center">
-            We're sorry, but there was an error loading this page. Our team has been notified.
+            We&rsquo;re sorry, but there was an error loading this page. Our team has been notified.
           </p>
           <button
             onClick={() => reset()}

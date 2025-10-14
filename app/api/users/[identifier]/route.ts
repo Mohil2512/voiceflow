@@ -5,7 +5,7 @@ import { getDatabases } from '@/lib/database/mongodb'
 export const dynamic = 'force-dynamic'
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { identifier: string } }
 ) {
   try {
@@ -17,7 +17,7 @@ export async function GET(
     const usersCollection = profiles.collection('users')
 
     // Try to find user by email or username
-    let user = await usersCollection.findOne({
+  const user = await usersCollection.findOne({
       $or: [
         { email: identifier },
         { username: identifier }

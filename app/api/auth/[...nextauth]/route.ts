@@ -3,7 +3,6 @@ import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { ObjectId } from 'mongodb'
 
 // Conditional import of database functions
 const getUserCollection = async () => {
@@ -107,7 +106,7 @@ const handler = NextAuth({
           const User = await getUserCollection()
           
           // Check if user already exists
-          let existingUser = await User.findOne({ 
+          const existingUser = await User.findOne({ 
             email: user.email 
           })
 

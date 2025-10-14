@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 // GET single post
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -109,8 +109,8 @@ export async function PUT(
     const rawContent = formData.get('content')
     const content = typeof rawContent === 'string' ? rawContent : ''
     const trimmedContent = content.trim()
-    const imageFiles = formData.getAll('images') as File[]
-    let imageUrls: string[] = [...(existingPost.images || [])] // Keep existing images
+  const imageFiles = formData.getAll('images') as File[]
+  const imageUrls: string[] = [...(existingPost.images || [])] // Keep existing images
 
     const hasExistingImages = imageUrls.length > 0
     const hasNewImages = imageFiles.some(file => file && file.size > 0)
@@ -188,7 +188,7 @@ export async function PUT(
 
 // DELETE post
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import type { Session } from "next-auth";
 import dynamic from "next/dynamic";
 import { DataProvider } from "@/providers/data-provider";
 
@@ -15,8 +17,8 @@ const ThemeFix = dynamic(() => import("@/components/ui/theme-fix"), { ssr: false
 const ThemeScript = dynamic(() => import("@/components/ui/theme-script"), { ssr: false });
 
 interface ProvidersProps {
-  children: React.ReactNode;
-  session?: any; // Session will be passed to ClientProvider internally
+  children: ReactNode;
+  session?: Session | null;
 }
 
 export function Providers({ children, session }: ProvidersProps) {

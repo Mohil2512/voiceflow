@@ -15,7 +15,7 @@ export const cacheUtils = {
    * @param data Data to store
    * @param expiryTime Optional custom expiry time in milliseconds
    */
-  setCache: (key: string, data: any, expiryTime = CACHE_EXPIRY_TIME) => {
+  setCache: <T>(key: string, data: T, expiryTime = CACHE_EXPIRY_TIME) => {
     if (typeof window === 'undefined') return;
     
     try {
@@ -36,7 +36,7 @@ export const cacheUtils = {
    * @param key Cache key
    * @returns The cached data or null if not found or expired
    */
-  getCache: <T = any>(key: string): T | null => {
+  getCache: <T = unknown>(key: string): T | null => {
     if (typeof window === 'undefined') return null;
     
     try {

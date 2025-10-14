@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { ImageIcon, Smile, MapPin, Calendar, X } from "lucide-react"
+import { ImageIcon, Smile, X } from "lucide-react"
+import Image from "next/image"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,11 @@ interface CreatePostModalProps {
   onPostCreated?: () => void;
 }
 
+type CurrentUserSummary = {
+  name?: string | null
+  image?: string | null
+}
+
 export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps) {
   const { data: session } = useSession()
   const router = useRouter()
@@ -26,7 +32,7 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
   const [images, setImages] = useState<{id: number, file: File, preview: string}[]>([])
   const [isPosting, setIsPosting] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<CurrentUserSummary | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Fetch current user data including profile picture
@@ -36,8 +42,10 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
         try {
           const response = await fetch('/api/users/me')
           if (response.ok) {
-            const data = await response.json()
-            setCurrentUser(data.user)
+            const data = await response.json() as { user?: CurrentUserSummary }
+            if (data.user) {
+              setCurrentUser(data.user)
+            }
           }
         } catch (error) {
           console.error('Error fetching current user:', error)
@@ -187,7 +195,7 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
         <DialogHeader>
           <DialogTitle>New thread</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Share what's happening with your followers.
+            Share what&apos;s happening with your followers.
           </p>
         </DialogHeader>
         <div className="flex gap-4 mt-4">
@@ -198,7 +206,8 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
           
           <div className="flex-1 space-y-4">
             <textarea 
-              placeholder="What's new?"
+              id="post-content-area"
+              placeholder="What&apos;s new?"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="min-h-[120px] resize-none border-none p-0 text-lg placeholder:text-muted-foreground focus-visible:ring-0 w-full bg-transparent"
@@ -209,9 +218,12 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
               <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
                 {images.map((image) => (
                   <div key={image.id} className="relative group">
-                    <img 
+                    <Image 
                       src={image.preview} 
                       alt="Upload preview" 
+                      width={256}
+                      height={128}
+                      unoptimized
                       className="w-full h-32 object-cover rounded-lg"
                     />
                     <button

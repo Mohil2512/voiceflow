@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { ObjectId } from 'mongodb'
 
@@ -14,7 +14,7 @@ const getUserCollection = async () => {
   return getCollection()
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession()
     
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       if (ObjectId.isValid(session.user.id)) {
         user = await User.findOne({ _id: new ObjectId(session.user.id) })
       }
-    } catch (error) {
+    } catch {
       console.log('ObjectId lookup failed, trying string lookup')
     }
     

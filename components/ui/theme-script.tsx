@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 // This component will add a script to fix theme application issues
 export default function ThemeScript() {
   const [mounted, setMounted] = useState(false)
-  const { theme, setTheme } = useTheme()
+  const { setTheme } = useTheme()
   
   useEffect(() => {
     // Apply theme immediately before setting mounted to true
@@ -59,7 +59,7 @@ export default function ThemeScript() {
     return () => {
       observer.disconnect()
     }
-  }, [])
+  }, [setTheme])
   
   if (!mounted) return null
   

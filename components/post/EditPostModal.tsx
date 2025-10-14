@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ImageIcon, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import Image from "next/image"
 
 interface EditPostModalProps {
   isOpen: boolean
@@ -124,11 +125,14 @@ export function EditPostModal({ isOpen, onClose, post, onSuccess }: EditPostModa
               <div className="grid grid-cols-2 gap-2">
                 {existingImages.map((imageUrl, index) => (
                   <div key={index} className="relative">
-                    <img
-                      src={imageUrl}
-                      alt={`Existing image ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                    />
+                      <Image
+                        src={imageUrl}
+                        alt={`Existing image ${index + 1}`}
+                        width={256}
+                        height={96}
+                        unoptimized
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
                     <button
                       type="button"
                       onClick={() => removeExistingImage(index)}
@@ -149,11 +153,14 @@ export function EditPostModal({ isOpen, onClose, post, onSuccess }: EditPostModa
               <div className="grid grid-cols-2 gap-2">
                 {newImages.map((file, index) => (
                   <div key={index} className="relative">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`New image ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                    />
+                      <Image
+                        src={URL.createObjectURL(file)}
+                        alt={`New image ${index + 1}`}
+                        width={256}
+                        height={96}
+                        unoptimized
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
                     <button
                       type="button"
                       onClick={() => removeNewImage(index)}

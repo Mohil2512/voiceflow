@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import type { ChangeEvent } from "react"
 import { useSession } from "next-auth/react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Layout } from "@/components/layout/Layout"
 import { Button } from "@/components/ui/button"
@@ -14,10 +16,13 @@ export default function CreatePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [content, setContent] = useState("")
-  const [images, setImages] = useState<{id: number, file: File, preview: string}[]>([])
+  type UploadedImage = { id: number; file: File; preview: string }
+  type UserProfile = { name?: string; image?: string }
+
+  const [images, setImages] = useState<UploadedImage[]>([])
   const [location, setLocation] = useState("")
   const [isPosting, setIsPosting] = useState(false)
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   // Fetch current user data including profile picture
@@ -28,7 +33,7 @@ export default function CreatePage() {
           const response = await fetch('/api/users/me')
           if (response.ok) {
             const data = await response.json()
-            setCurrentUser(data.user)
+            setCurrentUser((data.user ?? null) as UserProfile | null)
           }
         } catch (error) {
           console.error('Error fetching current user:', error)
@@ -54,7 +59,7 @@ export default function CreatePage() {
     return null
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     
     files.forEach(file => {
@@ -72,7 +77,7 @@ export default function CreatePage() {
     })
   }
 
-  const removeImage = (imageId) => {
+  const removeImage = (imageId: number) => {
     setImages(prev => prev.filter(img => img.id !== imageId))
   }
 
@@ -86,7 +91,7 @@ export default function CreatePage() {
       formData.append('location', location || '')
       
       // Add all images to form data if they exist
-      images.forEach((image, index) => {
+      images.forEach(image => {
         formData.append('images', image.file)
       })
 
@@ -157,9 +162,12 @@ export default function CreatePage() {
                   <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
                     {images.map((image) => (
                       <div key={image.id} className="relative group">
-                        <img 
+                        <Image 
                           src={image.preview} 
                           alt="Upload preview" 
+                          width={256}
+                          height={128}
+                          unoptimized
                           className="w-full h-32 object-cover rounded-lg"
                         />
                         <button

@@ -51,7 +51,7 @@ export const authOptions: NextAuthOptions = {
   },
   
   callbacks: {
-    async signIn({ user, account, profile }) {
+  async signIn() {
       // Allow all sign ins
       return true;
     },
@@ -98,7 +98,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     
-    async jwt({ token, user, account, profile }) {
+  async jwt({ token, user }) {
       // When user signs in for the first time
       if (user) {
         // Copy user image to token if available

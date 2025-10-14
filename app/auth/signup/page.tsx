@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -10,8 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Github, Mail, Eye, EyeOff, Calendar } from 'lucide-react'
+import { Github, Mail, Eye, EyeOff } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 
 export default function SignUpPage() {
@@ -31,20 +31,12 @@ export default function SignUpPage() {
   })
   const router = useRouter()
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     })
     setError('') // Clear error when user starts typing
-  }
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({
-      ...formData,
-      [name]: value
-    })
-    setError('')
   }
 
   const validateForm = () => {
@@ -95,7 +87,7 @@ export default function SignUpPage() {
     return true
   }
 
-  const handleManualSignUp = async (e: React.FormEvent) => {
+  const handleManualSignUp = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     if (!validateForm()) return
@@ -126,8 +118,9 @@ export default function SignUpPage() {
         router.push('/auth/signin')
       }, 2000)
 
-    } catch (error: any) {
-      setError(error.message || 'An error occurred during sign up')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred during sign up'
+      setError(message)
       console.error('Sign up error:', error)
     } finally {
       setIsLoading(false)
@@ -166,7 +159,7 @@ export default function SignUpPage() {
           <CardHeader>
             <CardTitle>Create Account</CardTitle>
             <CardDescription>
-              Choose how you'd like to create your account
+              Choose how you&rsquo;d like to create your account
             </CardDescription>
           </CardHeader>
 

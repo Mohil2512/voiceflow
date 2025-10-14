@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     let postObjectId: ObjectId
     try {
       postObjectId = new ObjectId(postId)
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid postId' },
         { status: 400 }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (typeof repostId === 'string' && repostId.trim().length > 0) {
       try {
         repostObjectId = new ObjectId(repostId)
-      } catch (error) {
+      } catch {
         repostObjectId = null
       }
     }

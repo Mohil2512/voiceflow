@@ -19,13 +19,17 @@ export function AppSidebarLink({ title, url, icon: Icon, isActive, requiresAuth 
   const { data: session } = useSession()
   const router = useRouter()
   const [isNavigating, setIsNavigating] = useState(false)
+  const requiresAuthentication = requiresAuth && !session?.user
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Don't prevent navigation - let the pages handle their own authentication
-    // Add immediate visual feedback
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (requiresAuthentication) {
+      event.preventDefault()
+      router.push('/auth/signin')
+      return
+    }
+
     setIsNavigating(true)
-    
-    // Prefetch the route if not already active
+
     if (!isActive && url !== '#') {
       router.prefetch(url)
     }
@@ -35,7 +39,7 @@ export function AppSidebarLink({ title, url, icon: Icon, isActive, requiresAuth 
     <Link
       href={url}
       onClick={handleClick}
-      prefetch={url !== '#'}
+  prefetch={!requiresAuthentication && url !== '#'}
       className={cn(
         "flex items-center rounded-xl text-left transition-all duration-150",
         isMobile 

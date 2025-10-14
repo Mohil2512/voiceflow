@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
   const trimmedContent = content.trim()
     
     // Handle multiple image uploads
-    const imageFiles = formData.getAll('images') as File[]
-    let imageUrls: string[] = []
+  const imageFiles = formData.getAll('images') as File[]
+  const imageUrls: string[] = []
 
     console.log('📝 Post creation request:')
   console.log('  Content:', content)

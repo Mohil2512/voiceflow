@@ -1,6 +1,5 @@
 "use client"
 
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Heart } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -10,7 +9,6 @@ interface NotificationLinkProps {
 }
 
 export function NotificationLink({ isActive }: NotificationLinkProps) {
-  const { data: session } = useSession()
   const router = useRouter()
 
   const handleClick = () => {

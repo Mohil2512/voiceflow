@@ -4,6 +4,7 @@ import { useState } from "react"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import Image from "next/image"
 
 interface ImageModalProps {
   images: string[]
@@ -71,11 +72,14 @@ export function ImageModal({ images, initialIndex, isOpen, onClose }: ImageModal
 
           {/* Main image */}
           <div className="w-full h-full flex items-center justify-center p-8">
-            <img
+            <Image
               src={images[currentIndex]}
               alt={`Full size image ${currentIndex + 1}`}
+              width={1200}
+              height={800}
+              unoptimized
               className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
             />
           </div>
 

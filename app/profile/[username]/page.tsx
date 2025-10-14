@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type MouseEvent } from "react"
 import { useRouter } from "next/navigation"
 import { Layout } from "@/components/layout/Layout"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -10,17 +10,67 @@ import { useSession } from "next-auth/react"
 import { MapPin, Link as LinkIcon, Calendar } from "lucide-react"
 import { useDataWithCache } from '@/hooks/use-data-cache'
 
+type FollowStats = {
+  followers: number
+  following: number
+}
+
+type UserProfileData = {
+  id?: string | null
+  name?: string | null
+  username?: string | null
+  email?: string | null
+  avatar?: string | null
+  image?: string | null
+  verified?: boolean | null
+  bio?: string | null
+  location?: string | null
+  website?: string | null
+  createdAt?: string | Date | null
+  followers?: number | null
+  following?: number | null
+}
+
+type UserPost = {
+  id?: string | null
+  _id?: string | null
+  content?: string | null
+  createdAt?: string | Date | null
+  timestamp?: string | null
+  likesCount?: number | null
+  likes?: number | null
+  commentsCount?: number | null
+  replies?: number | null
+  repostsCount?: number | null
+  reposts?: number | null
+  image?: string | null
+  isLiked?: boolean
+  isReposted?: boolean
+}
+
 export default function UserProfilePage({ params }: { params: { username: string } }) {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const username = params.username
-  const [userProfile, setUserProfile] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isFollowing, setIsFollowing] = useState(false)
   const [isSelf, setIsSelf] = useState(false)
-  const [followStats, setFollowStats] = useState({ followers: 0, following: 0 })
+  const [followStats, setFollowStats] = useState<FollowStats>({ followers: 0, following: 0 })
   const [followLoading, setFollowLoading] = useState(false)
+
+  const handleFollowHover = (event: MouseEvent<HTMLButtonElement>) => {
+    if (isFollowing && !followLoading) {
+      event.currentTarget.innerText = 'Unfollow'
+    }
+  }
+
+  const handleFollowLeave = (event: MouseEvent<HTMLButtonElement>) => {
+    if (isFollowing && !followLoading) {
+      event.currentTarget.innerText = 'Following'
+    }
+  }
   
   // Set mounted state after component mounts
   useEffect(() => {
@@ -33,32 +83,34 @@ export default function UserProfilePage({ params }: { params: { username: string
       if (!session?.user || !username || !mounted) return;
       
       try {
-        const response = await fetch(`/api/users/follow/status?username=${encodeURIComponent(username)}`);
+        const response = await fetch(`/api/users/follow/status?username=${encodeURIComponent(username)}`)
         if (response.ok) {
-          const data = await response.json();
-          setIsFollowing(data.isFollowing);
-          setIsSelf(data.isSelf);
-          setFollowStats(data.stats);
+          const data = await response.json() as {
+            isFollowing?: boolean
+            isSelf?: boolean
+            stats?: Partial<FollowStats>
+          }
+          setIsFollowing(Boolean(data.isFollowing))
+          setIsSelf(Boolean(data.isSelf))
+          if (data.stats) {
+            setFollowStats(prev => ({
+              followers: typeof data.stats.followers === 'number' ? data.stats.followers : prev.followers,
+              following: typeof data.stats.following === 'number' ? data.stats.following : prev.following
+            }))
+          }
         }
       } catch (error) {
-        console.error('Error checking follow status:', error);
+        console.error('Error checking follow status:', error)
       }
     };
     
-    checkFollowStatus();
-  }, [session, username, mounted]);
-
-  // Set mounted state after component mounts
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
+    checkFollowStatus()
+  }, [session, username, mounted])
   // Cache user posts with our custom hook
   const {
     data: userPosts = [],
-    isLoading: loadingPosts,
-    refetch: refreshPosts
-  } = useDataWithCache(
+    isLoading: loadingPosts
+  } = useDataWithCache<UserPost[]>(
     `profile-${username}-posts`,
     async () => {
       try {
@@ -76,10 +128,12 @@ export default function UserProfilePage({ params }: { params: { username: string
         // Fetch by username - using our new API endpoint
         const response = await fetch(`/api/users/username/${encodedUsername}`)
         if (response.ok) {
-          const data = await response.json()
+          const data = await response.json() as { user?: UserProfileData }
           
           // Store the user profile data
-          setUserProfile(data.user)
+          if (data.user) {
+            setUserProfile(data.user)
+          }
           console.log('Found user profile:', data.user?.username || username)
           
           // Now fetch posts by this user's identifier (username or email)
@@ -91,8 +145,11 @@ export default function UserProfilePage({ params }: { params: { username: string
             
             if (postsResponse.ok) {
               const postsData = await postsResponse.json()
-              if (postsData.posts && Array.isArray(postsData.posts)) {
-                return postsData.posts
+              if (Array.isArray(postsData)) {
+                return postsData as UserPost[]
+              }
+              if (Array.isArray(postsData.posts)) {
+                return postsData.posts as UserPost[]
               }
             }
           }
@@ -103,7 +160,7 @@ export default function UserProfilePage({ params }: { params: { username: string
           try {
             const errorData = await response.json()
             console.error('Error details:', errorData)
-          } catch (parseError) {
+          } catch {
             // Response couldn't be parsed as JSON
           }
         }
@@ -150,7 +207,7 @@ export default function UserProfilePage({ params }: { params: { username: string
         <div className="max-w-2xl mx-auto bg-background text-foreground min-h-screen">
           <div className="p-6 text-center">
             <h1 className="text-2xl font-bold mb-2">User Not Found</h1>
-            <p className="text-muted-foreground mb-4">The user @{username} doesn't exist or has been removed.</p>
+            <p className="text-muted-foreground mb-4">The user @{username} doesn&apos;t exist or has been removed.</p>
             <div className="mb-6 p-4 bg-card rounded-lg">
               <p className="text-sm text-muted-foreground">If you believe this is an error, check for:</p>
               <ul className="text-sm text-left mt-2 list-disc list-inside">
@@ -207,8 +264,8 @@ export default function UserProfilePage({ params }: { params: { username: string
                 ) : session ? (
                   <button 
                     onClick={async () => {
-                      if (followLoading) return;
-                      setFollowLoading(true);
+                      if (followLoading) return
+                      setFollowLoading(true)
                       
                       try {
                         const response = await fetch('/api/users/follow', {
@@ -220,22 +277,33 @@ export default function UserProfilePage({ params }: { params: { username: string
                             targetUsername: username,
                             action: isFollowing ? 'unfollow' : 'follow'
                           })
-                        });
+                        })
                         
                         if (response.ok) {
-                          const data = await response.json();
-                          setIsFollowing(data.isFollowing);
+                          const data = await response.json() as {
+                            isFollowing?: boolean
+                            stats?: Partial<FollowStats>
+                          }
+                          const nextFollowing = Boolean(data.isFollowing)
+                          setIsFollowing(nextFollowing)
                           
-                          // Update follow stats (simple optimistic update)
-                          setFollowStats(prev => ({
-                            ...prev,
-                            followers: isFollowing ? prev.followers - 1 : prev.followers + 1
-                          }));
+                          if (data.stats) {
+                            const { followers, following } = data.stats
+                            setFollowStats(prev => ({
+                              followers: typeof followers === 'number' ? followers : prev.followers,
+                              following: typeof following === 'number' ? following : prev.following
+                            }))
+                          } else {
+                            setFollowStats(prev => ({
+                              ...prev,
+                              followers: nextFollowing ? prev.followers + 1 : Math.max(prev.followers - 1, 0)
+                            }))
+                          }
                         }
                       } catch (error) {
-                        console.error('Error updating follow status:', error);
+                        console.error('Error updating follow status:', error)
                       } finally {
-                        setFollowLoading(false);
+                        setFollowLoading(false)
                       }
                     }}
                     disabled={followLoading}
@@ -244,16 +312,8 @@ export default function UserProfilePage({ params }: { params: { username: string
                         ? 'border border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500 group' 
                         : 'bg-primary text-primary-foreground hover:bg-primary/80'
                     } transition-colors`}
-                    onMouseEnter={(e) => {
-                      if (isFollowing && !followLoading) {
-                        e.currentTarget.innerText = 'Unfollow';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (isFollowing && !followLoading) {
-                        e.currentTarget.innerText = 'Following';
-                      }
-                    }}
+                    onMouseEnter={handleFollowHover}
+                    onMouseLeave={handleFollowLeave}
                   >
                     {followLoading 
                       ? <span className="inline-block h-4 w-4 border-2 border-current rounded-full border-b-transparent animate-spin" /> 
@@ -368,31 +428,39 @@ export default function UserProfilePage({ params }: { params: { username: string
                 ) : !userPosts || userPosts.length === 0 ? (
                   <div className="text-center py-16">
                     <h2 className="text-2xl font-bold text-muted-foreground mb-2">No posts yet</h2>
-                    <p className="text-muted-foreground">When {userProfile.name || username} posts, you'll see them here.</p>
+                    <p className="text-muted-foreground">When {userProfile.name || username} posts, you&apos;ll see them here.</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {userPosts.map((post: any) => (
-                      <div key={post.id || post._id} className="py-4">
-                        <PostCard 
-                          id={post.id || post._id}
-                          user={{
-                            name: userProfile.name,
-                            username: username,
-                            avatar: userProfile.avatar,
-                            verified: userProfile.verified
-                          }}
-                          content={post.content}
-                          timestamp={post.createdAt || post.timestamp}
-                          likes={post.likesCount || post.likes || 0}
-                          replies={post.commentsCount || post.replies || 0}
-                          reposts={post.repostsCount || post.reposts || 0}
-                          image={post.image}
-                          isLiked={post.isLiked || false}
-                          isReposted={post.isReposted || false}
-                        />
-                      </div>
-                    ))}
+                    {userPosts.map((post, index) => {
+                      const postId = post.id ?? post._id ?? `post-${index}`
+                      const timestampValue = typeof post.createdAt === 'string'
+                        ? post.createdAt
+                        : typeof post.timestamp === 'string'
+                          ? post.timestamp
+                          : new Date().toISOString()
+                      return (
+                        <div key={postId} className="py-4">
+                          <PostCard 
+                            id={post.id ?? post._id ?? undefined}
+                            user={{
+                              name: userProfile.name ?? username,
+                              username,
+                              avatar: userProfile.avatar ?? undefined,
+                              verified: Boolean(userProfile.verified)
+                            }}
+                            content={post.content ?? ''}
+                            timestamp={timestampValue}
+                            likes={(post.likesCount ?? post.likes) ?? 0}
+                            replies={(post.commentsCount ?? post.replies) ?? 0}
+                            reposts={(post.repostsCount ?? post.reposts) ?? 0}
+                            image={post.image ?? undefined}
+                            isLiked={Boolean(post.isLiked)}
+                            isReposted={Boolean(post.isReposted)}
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </TabsContent>
@@ -400,21 +468,21 @@ export default function UserProfilePage({ params }: { params: { username: string
               <TabsContent value="replies" className="mt-6">
                 <div className="text-center py-16">
                   <h2 className="text-2xl font-bold text-muted-foreground mb-2">No replies yet</h2>
-                  <p className="text-muted-foreground">When {userProfile.name || username} replies to others, you'll see them here.</p>
+                  <p className="text-muted-foreground">When {userProfile.name || username} replies to others, you&apos;ll see them here.</p>
                 </div>
               </TabsContent>
               
               <TabsContent value="media" className="mt-6">
                 <div className="text-center py-16">
                   <h2 className="text-2xl font-bold text-muted-foreground mb-2">No media yet</h2>
-                  <p className="text-muted-foreground">When {userProfile.name || username} shares media, you'll see it here.</p>
+                  <p className="text-muted-foreground">When {userProfile.name || username} shares media, you&apos;ll see it here.</p>
                 </div>
               </TabsContent>
               
               <TabsContent value="likes" className="mt-6">
                 <div className="text-center py-16">
                   <h2 className="text-2xl font-bold text-muted-foreground mb-2">No likes yet</h2>
-                  <p className="text-muted-foreground">{userProfile.name || username} hasn't liked any posts yet.</p>
+                  <p className="text-muted-foreground">{userProfile.name || username} hasn&apos;t liked any posts yet.</p>
                 </div>
               </TabsContent>
             </Tabs>
