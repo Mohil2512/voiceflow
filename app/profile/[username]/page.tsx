@@ -92,10 +92,11 @@ export default function UserProfilePage({ params }: { params: { username: string
           }
           setIsFollowing(Boolean(data.isFollowing))
           setIsSelf(Boolean(data.isSelf))
-          if (data.stats) {
+          const stats = data.stats
+          if (stats) {
             setFollowStats(prev => ({
-              followers: typeof data.stats.followers === 'number' ? data.stats.followers : prev.followers,
-              following: typeof data.stats.following === 'number' ? data.stats.following : prev.following
+              followers: typeof stats.followers === 'number' ? stats.followers : prev.followers,
+              following: typeof stats.following === 'number' ? stats.following : prev.following
             }))
           }
         }
@@ -245,7 +246,7 @@ export default function UserProfilePage({ params }: { params: { username: string
           <div className="px-6 pb-6">
             <div className="flex justify-between items-start relative">
               <Avatar className="w-24 h-24 border-4 border-background rounded-full absolute -top-12">
-                <AvatarImage src={userProfile.avatar || ""} alt={userProfile.name} />
+                <AvatarImage src={userProfile.avatar ?? undefined} alt={userProfile.name ?? 'Profile avatar'} />
                 <AvatarFallback className="text-2xl">
                   {userProfile.name ? userProfile.name[0].toUpperCase() : "?"}
                 </AvatarFallback>
