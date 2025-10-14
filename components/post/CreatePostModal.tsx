@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { ImageIcon, Smile, X } from "lucide-react"
+import { ImageIcon, X } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -343,60 +343,6 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <ImageIcon className="h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-9 w-9 p-0"
-                  onClick={() => {
-                    // Method to properly trigger the system emoji picker on Windows
-                    if (navigator.platform.includes('Win')) {
-                      // Create a virtual keyboard event for Windows key + period
-                      try {
-                        // Focus on the content area before triggering emoji picker
-                        const textArea = document.getElementById('post-content-area');
-                        if (textArea) {
-                          textArea.focus();
-                          
-                          // For Windows, we can't programmatically trigger Win+. 
-                          // Instead, inform the user to use the shortcut
-                          alert("Please use Windows key + . to open the emoji picker");
-                        }
-                      } catch (error) {
-                        console.error("Failed to trigger emoji picker:", error);
-                      }
-                    } else {
-                      // For Mac/other OS - use existing approach
-                      // Create a contenteditable element to capture emoji input
-                      const tempInput = document.createElement('div');
-                      tempInput.contentEditable = 'true';
-                      tempInput.style.position = 'fixed';
-                      tempInput.style.left = '-999px';
-                      document.body.appendChild(tempInput);
-                      tempInput.focus();
-                      
-                      // Try to trigger emoji keyboard on Mac (Cmd + Ctrl + Space)
-                      document.execCommand('insertText', false, ' ');
-                      
-                      // Set up a listener to capture the selected emoji
-                      tempInput.addEventListener('input', () => {
-                        const emoji = tempInput.textContent || '';
-                        if (emoji) {
-                          setContent(prev => prev + emoji);
-                        }
-                        document.body.removeChild(tempInput);
-                      });
-                      
-                      // Clean up if focus is lost
-                      tempInput.addEventListener('blur', () => {
-                        if (document.body.contains(tempInput)) {
-                          document.body.removeChild(tempInput);
-                        }
-                      });
-                    }
-                  }}
-                >
-                  <Smile className="h-5 w-5" />
                 </Button>
               </div>
               
