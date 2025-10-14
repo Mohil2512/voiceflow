@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EditProfileCard } from '@/components/profile/EditProfileCard'
 
 interface UserProfile {
-  id: string
+  id?: string | null
   name?: string | null
   email?: string | null
   image?: string | null
