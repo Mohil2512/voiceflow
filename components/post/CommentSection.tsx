@@ -37,12 +37,6 @@ export function CommentSection({ postId, isOpen, onClose }: CommentSectionProps)
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState("")
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchComments()
-    }
-  }, [isOpen, postId])
-
   const fetchComments = async () => {
     setIsLoading(true)
     try {
@@ -57,6 +51,13 @@ export function CommentSection({ postId, isOpen, onClose }: CommentSectionProps)
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchComments()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, postId])
 
   const handleSubmitComment = async () => {
     if (!session) {

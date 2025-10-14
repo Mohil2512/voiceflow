@@ -15,7 +15,7 @@ export async function GET() {
     // Check users
     const totalUsers = await usersCollection.countDocuments()
     const usersWithUsername = await usersCollection.countDocuments({
-      username: { $exists: true, $ne: null, $ne: '' }
+      username: { $exists: true, $nin: [null, ''] }
     })
     const usersWithoutUsername = await usersCollection.countDocuments({
       $or: [
@@ -36,7 +36,7 @@ export async function GET() {
     // Check posts
     const totalPosts = await postsCollection.countDocuments()
     const postsWithUsername = await postsCollection.countDocuments({
-      'author.username': { $exists: true, $ne: null, $ne: '' }
+      'author.username': { $exists: true, $nin: [null, ''] }
     })
     const postsWithoutUsername = await postsCollection.countDocuments({
       $or: [
