@@ -58,6 +58,7 @@ export function PostCard({
   content,
   timestamp,
   likes = 0,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   replies: _replies = 0, // Unused - we fetch commentCount dynamically instead
   reposts = 0,
   image,
