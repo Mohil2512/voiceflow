@@ -9,13 +9,18 @@ export async function GET(request: Request) {
   try {
     console.log('GET /api/posts - Fetching posts...')
     
+    const session = await getServerSession(authOptions)
+    const currentUserEmail = session?.user?.email || null
+
     const { profiles } = await getDatabases()
     const posts = await profiles.collection('posts').find({}).sort({ createdAt: -1 }).toArray()
     
     console.log(`Found ${posts.length} posts`)
     
     // Get unique user emails to fetch current profile data
-    const userEmails = Array.from(new Set(posts.map(post => post.author?.email).filter(Boolean)))
+    const userEmails = Array.from(new Set(
+      posts.flatMap(post => [post.author?.email, post.originalAuthor?.email]).filter(Boolean) as string[]
+    ))
     const usersCollection = profiles.collection('users')
     const userProfiles = await usersCollection.find({ 
       email: { $in: userEmails } 
@@ -29,33 +34,68 @@ export async function GET(request: Request) {
     
     // Transform posts to match PostCard component expectations
     const transformedPosts = posts.map(post => {
-      const userProfile = userProfileMap.get(post.author?.email)
-      
-      console.log(`🔍 Profile lookup for ${post.author?.email}:`, {
-        hasProfile: !!userProfile,
-        profileUsername: userProfile?.username,
-        profileName: userProfile?.name,
-        postAuthorEmail: post.author?.email
-      })
-      
-      // Better username fallback logic
-      const displayUsername = userProfile?.username || 
-                             post.author?.username || 
-                             userProfile?.name?.toLowerCase().replace(/\s+/g, '') ||
-                             post.author?.email?.split('@')[0] || 
-                             'anonymous'
-      
+      const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
+      const repostedBy = Array.isArray(post.repostedBy) ? post.repostedBy : []
+      const likesCount = likedBy.length || (typeof post.likes === 'number' ? post.likes : 0)
+      const repostsCount = repostedBy.length || (typeof post.reposts === 'number' ? post.reposts : 0)
+      const content = typeof post.content === 'string' ? post.content : ''
+
+      const isRepostEntry = Boolean(post.isRepost)
+      const baseAuthor = isRepostEntry && post.originalAuthor ? post.originalAuthor : post.author
+      const baseProfile = baseAuthor?.email ? userProfileMap.get(baseAuthor.email) : undefined
+      const reposterProfile = isRepostEntry && post.author?.email ? userProfileMap.get(post.author.email) : undefined
+
+      const buildUserPayload = (primaryProfile: any, fallbackAuthor: any) => {
+        const fallbackEmail = fallbackAuthor?.email || ''
+        const name = primaryProfile?.name || fallbackAuthor?.name || 'Anonymous'
+        const username = primaryProfile?.username ||
+          fallbackAuthor?.username ||
+          primaryProfile?.name?.toLowerCase()?.replace(/\s+/g, '') ||
+          fallbackEmail.split('@')[0] ||
+          'anonymous'
+        const image = primaryProfile?.image || fallbackAuthor?.image || ''
+        const verified = Boolean(primaryProfile?.isVerified)
+
+        return {
+          name,
+          username,
+          avatar: image,
+          image,
+          email: fallbackEmail,
+          verified
+        }
+      }
+
+      const displayUser = buildUserPayload(baseProfile, baseAuthor)
+      const reposterContext = isRepostEntry
+        ? buildUserPayload(reposterProfile, post.author)
+        : null
+
+      const canEdit = currentUserEmail
+        ? currentUserEmail === post.author?.email && !isRepostEntry
+        : false
+
+      const normalizeId = (value: any) => {
+        if (!value) {
+          return null
+        }
+        if (typeof value === 'string') {
+          return value
+        }
+        if (typeof value === 'object' && typeof value.toString === 'function') {
+          return value.toString()
+        }
+        try {
+          return String(value)
+        } catch (error) {
+          return null
+        }
+      }
+
       return {
         id: post._id.toString(),
-        user: {
-          name: userProfile?.name || post.author?.name || 'Anonymous',
-          username: displayUsername,
-          avatar: userProfile?.image || post.author?.image || '',
-          image: userProfile?.image || post.author?.image || '',
-          email: post.author?.email || '',
-          verified: userProfile?.isVerified || false
-        },
-        content: post.content,
+        user: displayUser,
+        content,
         timestamp: (() => {
           if (post.createdAt) {
             const date = new Date(post.createdAt)
@@ -67,13 +107,17 @@ export async function GET(request: Request) {
           }
           return new Date().toISOString()
         })(),
-        likes: post.likes || 0,
-        replies: post.replies || 0,
-        reposts: post.reposts || 0,
+        likes: likesCount,
+  replies: Array.isArray(post.comments) ? post.comments.length : (post.replies || 0),
+        reposts: repostsCount,
         image: post.images && post.images.length > 0 ? post.images[0] : null,
         images: post.images || [], // Include the full images array
-        isLiked: false,
-        isReposted: false
+        isLiked: currentUserEmail ? likedBy.includes(currentUserEmail) : false,
+        isReposted: currentUserEmail ? repostedBy.includes(currentUserEmail) : false,
+        canEdit,
+        repostContext: reposterContext,
+        originalPostId: normalizeId(post.originalPostId),
+        isRepostEntry
       }
     })
     
@@ -110,9 +154,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { content, images = [] } = body
 
-    if (!content || content.trim().length === 0) {
+    if ((!content || content.trim().length === 0) && (!images || images.length === 0)) {
       return NextResponse.json(
-        { error: 'Post content is required' },
+        { error: 'Add text or at least one image before posting.' },
         { status: 400 }
       )
     }
@@ -123,7 +167,6 @@ export async function POST(request: NextRequest) {
     const userProfile = await profiles.collection('users').findOne({ email: session.user.email })
     
     const newPost = {
-      content: content.trim(),
       timestamp: new Date().toISOString(),
       createdAt: new Date(),
       author: {
@@ -133,10 +176,11 @@ export async function POST(request: NextRequest) {
         username: userProfile?.username || session.user.name?.toLowerCase().replace(/\s+/g, '') || session.user.email.split('@')[0],
         image: userProfile?.image || session.user.image || ''
       },
+      content: (content || '').trim(),
       images: images || [],
-      likes: [],
+      likedBy: [],
       comments: [],
-      reposts: []
+      repostedBy: []
     }
     
     console.log('Creating post with author data:', newPost.author)

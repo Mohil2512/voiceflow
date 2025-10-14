@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Heart, MessageCircle, Repeat2, MoreHorizontal, Edit, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { EditPostModal } from "./EditPostModal"
 import { ImageModal } from "@/components/ui/image-modal"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 interface PostCardProps {
@@ -32,6 +31,15 @@ interface PostCardProps {
   images?: string[]  // Added for multiple images support
   isLiked?: boolean
   isReposted?: boolean
+  canEdit?: boolean
+  repostContext?: {
+    name?: string
+    username?: string
+    avatar?: string
+    email?: string
+  }
+  originalPostId?: string | null
+  isRepostEntry?: boolean
   onPostUpdate?: () => void  // Callback for when post is updated/deleted
 }
 
@@ -47,6 +55,10 @@ export function PostCard({
   images = [],
   isLiked = false,
   isReposted = false,
+  canEdit,
+  repostContext,
+  originalPostId,
+  isRepostEntry = false,
   onPostUpdate,
 }: PostCardProps) {
   const { data: session } = useSession()
@@ -61,6 +73,22 @@ export function PostCard({
   const [isDeleting, setIsDeleting] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+
+  useEffect(() => {
+    setLiked(isLiked)
+  }, [isLiked])
+
+  useEffect(() => {
+    setReposted(isReposted)
+  }, [isReposted])
+
+  useEffect(() => {
+    setLikesCount(likes)
+  }, [likes])
+
+  useEffect(() => {
+    setRepostsCount(reposts)
+  }, [reposts])
   
   // Ensure we have valid user data
   if (!user) {
@@ -68,7 +96,9 @@ export function PostCard({
   }
   
   // Check if current user owns this post
-  const isOwner = session?.user?.email === user.email
+  const isOwner = typeof canEdit === 'boolean'
+    ? canEdit
+    : session?.user?.email === user.email
   
   // Ensure username is properly formatted and prioritize proper username over email
   const displayUsername = user?.username || 'anonymous'
@@ -90,53 +120,116 @@ export function PostCard({
 
   const handleLike = async () => {
     requireAuth(async () => {
+      if (!id) {
+        toast({
+          title: 'Action unavailable',
+          description: 'Unable to find this post. Please refresh and try again.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const previousLiked = liked
+      const previousCount = likesCount
+      const nextLiked = !liked
+
+      setLiked(nextLiked)
+      setLikesCount(nextLiked ? likesCount + 1 : Math.max(likesCount - 1, 0))
+
       try {
-        setLiked(!liked)
-        setLikesCount(liked ? likesCount - 1 : likesCount + 1)
-        
-        // Call API to update like status
-        await fetch('/api/posts/like', {
+        const response = await fetch('/api/posts/like', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ postId: id, liked: !liked }),
+          body: JSON.stringify({ postId: id, liked: nextLiked }),
         })
+
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to update like status')
+        }
+
+        if (typeof data.liked === 'boolean') {
+          setLiked(data.liked)
+        }
+
+        if (typeof data.likes === 'number') {
+          setLikesCount(data.likes)
+        }
       } catch (error) {
         console.error('Error updating like status:', error)
-        // Revert UI state if API call fails
-        setLiked(liked)
-        setLikesCount(likesCount)
+        setLiked(previousLiked)
+        setLikesCount(previousCount)
+        toast({
+          title: 'Like failed',
+          description: error instanceof Error ? error.message : 'Please try again.',
+          variant: 'destructive'
+        })
       }
     })
   }
 
   const handleRepost = async () => {
     requireAuth(async () => {
+      const targetPostId = originalPostId || id
+      if (!targetPostId) {
+        toast({
+          title: 'Repost unavailable',
+          description: 'Unable to locate the original post for this repost action.',
+          variant: 'destructive'
+        })
+        return
+      }
+
+      const previousReposted = reposted
+      const previousCount = repostsCount
+      const nextReposted = !reposted
+
+      setReposted(nextReposted)
+      setRepostsCount(nextReposted ? repostsCount + 1 : Math.max(repostsCount - 1, 0))
+
       try {
-        console.log(`Toggling repost for post ${id}, current state:`, reposted);
-        const newRepostedState = !reposted;
-        setReposted(newRepostedState)
-        setRepostsCount(reposted ? repostsCount - 1 : repostsCount + 1)
-        
-        // Call API to update repost status
-        console.log(`Sending repost request to API, postId: ${id}, reposted: ${newRepostedState}`);
+        const payload: Record<string, unknown> = {
+          postId: targetPostId,
+          reposted: nextReposted
+        }
+
+        if (isRepostEntry && id) {
+          payload.repostId = id
+        }
+
         const response = await fetch('/api/posts/repost', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ postId: id, reposted: newRepostedState }),
+          body: JSON.stringify(payload),
         })
         
+        const data = await response.json().catch(() => ({}))
+
         if (!response.ok) {
-          throw new Error('Failed to update repost status')
+          throw new Error(data.error || 'Failed to update repost status')
+        }
+
+        if (typeof data.reposted === 'boolean') {
+          setReposted(data.reposted)
+        }
+
+        if (typeof data.reposts === 'number') {
+          setRepostsCount(data.reposts)
         }
       } catch (error) {
         console.error('Error updating repost status:', error)
-        // Revert UI state if API call fails
-        setReposted(reposted)
-        setRepostsCount(repostsCount)
+        setReposted(previousReposted)
+        setRepostsCount(previousCount)
+        toast({
+          title: 'Repost failed',
+          description: error instanceof Error ? error.message : 'Please try again.',
+          variant: 'destructive'
+        })
       }
     })
   }
@@ -202,8 +295,18 @@ export function PostCard({
     }
   }
 
+  const reposterLabel = repostContext?.username
+    ? `@${repostContext.username}`
+    : repostContext?.name || null
+
   return (
     <div className="border-b border-border p-3 md:p-4 hover:bg-accent/30 transition-colors">
+      {repostContext && (
+        <div className="flex items-center text-xs text-muted-foreground mb-2 ml-12">
+          <Repeat2 className="w-3 h-3 mr-2" />
+          <span>{reposterLabel ? `${reposterLabel} reposted` : 'Reposted'}</span>
+        </div>
+      )}
       <div className="flex space-x-3">
         <div onClick={handleUserClick} className="cursor-pointer flex-shrink-0">
           <Avatar className="w-10 h-10 ring-1 ring-border hover:ring-primary transition-all">
@@ -236,7 +339,7 @@ export function PostCard({
                       return 'Just now'
                     }
                     return date.toLocaleDateString()
-                  } catch (error) {
+                  } catch {
                     return 'Just now'
                   }
                 })()}

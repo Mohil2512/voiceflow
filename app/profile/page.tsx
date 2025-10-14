@@ -37,12 +37,24 @@ interface Post {
   reposts?: number
   image?: string
   images?: string[]
+  isLiked?: boolean
+  isReposted?: boolean
+  canEdit?: boolean
+  repostContext?: {
+    name?: string
+    username?: string
+    avatar?: string
+    email?: string
+  }
+  originalPostId?: string | null
+  isRepostEntry?: boolean
 }
 
 export default function Profile() {
   const { data: session, status } = useSession()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
+  const [reposts, setReposts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -91,6 +103,24 @@ export default function Profile() {
     }
   }, [])
 
+  const fetchUserReposts = useCallback(async (userEmail: string) => {
+    if (!userEmail) return
+
+    try {
+      const response = await fetch(`/api/posts/reposts/${encodeURIComponent(userEmail)}`)
+      if (response.ok) {
+        const data = await response.json()
+        const userReposts = Array.isArray(data) ? data : Array.isArray(data?.reposts) ? data.reposts : []
+        setReposts(userReposts)
+      } else {
+        setReposts([])
+      }
+    } catch (error) {
+      console.error('Error fetching user reposts:', error)
+      setReposts([])
+    }
+  }, [])
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -99,11 +129,12 @@ export default function Profile() {
     if (mounted && status === 'authenticated' && session?.user?.email && !profile) {
       fetchProfileData(session.user.email)
       fetchUserPosts(session.user.email)
+      fetchUserReposts(session.user.email)
     } else if (mounted && status === 'unauthenticated') {
       setLoading(false)
       setError('Please sign in to view your profile')
     }
-  }, [mounted, status, session?.user?.email, profile, fetchProfileData, fetchUserPosts])
+  }, [mounted, status, session?.user?.email, profile, fetchProfileData, fetchUserPosts, fetchUserReposts])
 
   if (!mounted) return null
 
@@ -203,9 +234,16 @@ export default function Profile() {
                     reposts={post.reposts || 0}
                     image={post.image}
                     images={post.images || []}
+                    isLiked={post.isLiked || false}
+                    isReposted={post.isReposted || false}
+                    canEdit={post.canEdit}
+                    repostContext={post.repostContext}
+                    originalPostId={post.originalPostId}
+                    isRepostEntry={post.isRepostEntry}
                     onPostUpdate={() => {
                       if (session?.user?.email) {
                         fetchUserPosts(session.user.email)
+                        fetchUserReposts(session.user.email)
                       }
                     }}
                   />
@@ -221,8 +259,33 @@ export default function Profile() {
           </TabsContent>
           
           <TabsContent value="reposts" className="mt-0">
-            <div className="px-6 py-12 text-center">
-              <p className="text-muted-foreground">Reposts functionality coming soon</p>
+            <div className="divide-y divide-border">
+              {!Array.isArray(reposts) || reposts.length === 0 ? (
+                <div className="px-6 py-12 text-center">
+                  <p className="text-muted-foreground">No reposts yet</p>
+                </div>
+              ) : (
+                reposts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    id={post.id}
+                    content={post.content}
+                    timestamp={post.timestamp}
+                    user={post.user}
+                    likes={post.likes || 0}
+                    replies={post.replies || 0}
+                    reposts={post.reposts || 0}
+                    image={post.image}
+                    images={post.images || []}
+                    isLiked={post.isLiked || false}
+                    isReposted={post.isReposted || false}
+                    canEdit={post.canEdit}
+                    repostContext={post.repostContext}
+                    originalPostId={post.originalPostId}
+                    isRepostEntry={post.isRepostEntry}
+                  />
+                ))
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -239,6 +302,7 @@ export default function Profile() {
               // Refresh posts to show updated profile data
               if (session?.user?.email) {
                 fetchUserPosts(session.user.email)
+                fetchUserReposts(session.user.email)
               }
             }}
           />

@@ -26,6 +26,11 @@ export async function GET(
     }
 
     // Transform post to match frontend expectations
+    const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
+    const repostedBy = Array.isArray(post.repostedBy) ? post.repostedBy : []
+    const likesCount = likedBy.length || (typeof post.likes === 'number' ? post.likes : 0)
+    const repostsCount = repostedBy.length || (typeof post.reposts === 'number' ? post.reposts : 0)
+
     const transformedPost = {
       id: post._id.toString(),
       user: {
@@ -36,11 +41,11 @@ export async function GET(
         email: post.author?.email || '',
         verified: false
       },
-      content: post.content,
+      content: typeof post.content === 'string' ? post.content : '',
       timestamp: post.createdAt?.toISOString() || post.timestamp || new Date().toISOString(),
-      likes: post.likes || 0,
+      likes: likesCount,
       replies: post.replies || 0,
-      reposts: post.reposts || 0,
+      reposts: repostsCount,
       images: post.images || [],
       isLiked: false,
       isReposted: false
@@ -85,6 +90,13 @@ export async function PUT(
       )
     }
 
+    if (existingPost.isRepost) {
+      return NextResponse.json(
+        { error: 'Reposts cannot be edited. Remove the repost and repost the original post instead.' },
+        { status: 400 }
+      )
+    }
+
     if (existingPost.author?.email !== session.user.email) {
       return NextResponse.json(
         { error: 'Unauthorized - you can only edit your own posts' },
@@ -94,13 +106,18 @@ export async function PUT(
 
     // Parse FormData for content and images
     const formData = await request.formData()
-    const content = formData.get('content') as string
+    const rawContent = formData.get('content')
+    const content = typeof rawContent === 'string' ? rawContent : ''
+    const trimmedContent = content.trim()
     const imageFiles = formData.getAll('images') as File[]
     let imageUrls: string[] = [...(existingPost.images || [])] // Keep existing images
 
-    if (!content || content.trim().length === 0) {
+    const hasExistingImages = imageUrls.length > 0
+    const hasNewImages = imageFiles.some(file => file && file.size > 0)
+
+    if (!trimmedContent && !hasExistingImages && !hasNewImages) {
       return NextResponse.json(
-        { error: 'Post content is required' },
+        { error: 'Add text or at least one image before updating the post.' },
         { status: 400 }
       )
     }
@@ -137,7 +154,7 @@ export async function PUT(
 
     // Update the post
     const updateData = {
-      content: content.trim(),
+      content: trimmedContent,
       images: imageUrls,
       updatedAt: new Date()
     }

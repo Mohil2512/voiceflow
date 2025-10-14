@@ -24,18 +24,38 @@ export async function testCloudinaryConnection() {
 // Upload image function
 export async function uploadImage(file: string, options: any = {}) {
   try {
+    if (!serverEnv.CLOUDINARY_CLOUD_NAME || !serverEnv.CLOUDINARY_API_KEY || !serverEnv.CLOUDINARY_API_SECRET) {
+      return {
+        success: false,
+        error: 'Cloudinary credentials are not configured on the server.'
+      }
+    }
+
     console.log('🔥 Starting Cloudinary upload...')
     console.log('  Cloud name:', serverEnv.CLOUDINARY_CLOUD_NAME)
     console.log('  API key:', serverEnv.CLOUDINARY_API_KEY ? '[SET]' : '[NOT SET]')
     console.log('  API secret:', serverEnv.CLOUDINARY_API_SECRET ? '[SET]' : '[NOT SET]')
     console.log('  File type:', file.substring(0, 30) + '...')
     console.log('  Options:', options)
-    
-    const result = await cloudinary.uploader.upload(file, {
+
+    const defaultOptions = {
       folder: 'voiceflow',
       resource_type: 'auto',
+      format: 'webp',
+      transformation: [
+        { width: 1280, height: 1280, crop: 'limit' },
+        { quality: 'auto:good' },
+        { fetch_format: 'auto' }
+      ]
+    }
+
+    const mergedOptions = {
+      ...defaultOptions,
       ...options,
-    });
+      transformation: options?.transformation ?? defaultOptions.transformation
+    }
+    
+    const result = await cloudinary.uploader.upload(file, mergedOptions);
     
     console.log('✅ Cloudinary upload successful!')
     console.log('  Public ID:', result.public_id)

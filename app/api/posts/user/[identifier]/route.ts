@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../../../auth/[...nextauth]/config'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -17,29 +19,41 @@ const getDatabases = async () => {
   }
 }
 
-function formatTimestamp(date: Date | string): string {
-  if (!date) return 'now'
-  
+const buildUserPayload = (primaryProfile: any, fallbackAuthor: any) => {
+  const fallbackEmail = fallbackAuthor?.email || ''
+  const name = primaryProfile?.name || fallbackAuthor?.name || 'Anonymous'
+  const username = primaryProfile?.username ||
+    fallbackAuthor?.username ||
+    primaryProfile?.name?.toLowerCase()?.replace(/\s+/g, '') ||
+    fallbackEmail.split('@')[0] ||
+    'anonymous'
+  const image = primaryProfile?.image || fallbackAuthor?.image || ''
+  const verified = Boolean(primaryProfile?.isVerified)
+
+  return {
+    name,
+    username,
+    avatar: image,
+    image,
+    email: fallbackEmail,
+    verified
+  }
+}
+
+const normalizeId = (value: any) => {
+  if (!value) {
+    return null
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'object' && typeof value.toString === 'function') {
+    return value.toString()
+  }
   try {
-    const now = new Date()
-    const postDate = new Date(date)
-    
-    // Check if the date is valid
-    if (isNaN(postDate.getTime())) {
-      return 'now'
-    }
-    
-    const diffInMs = now.getTime() - postDate.getTime()
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
-    const diffInDays = Math.floor(diffInHours / 24)
-    
-    if (diffInHours < 1) return 'now'
-    if (diffInHours < 24) return `${diffInHours}h`
-    if (diffInDays < 7) return `${diffInDays}d`
-    return postDate.toLocaleDateString()
+    return String(value)
   } catch (error) {
-    console.error('Error formatting timestamp:', error)
-    return 'now'
+    return null
   }
 }
 
@@ -47,90 +61,112 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { identifier: string } }
 ) {
-  const identifier = params.identifier
-  
-  if (!identifier) {
+  const rawIdentifier = params.identifier
+
+  if (!rawIdentifier) {
     return NextResponse.json(
       { error: 'User identifier parameter is required' },
       { status: 400 }
     )
   }
-  
+
   try {
-    // Connect to database - MongoDB Atlas
+    const identifier = decodeURIComponent(rawIdentifier)
+    const session = await getServerSession(authOptions)
+    const currentUserEmail = session?.user?.email || null
+
     const { profiles } = await getDatabases()
-    
-    // Try to determine if this is a username or email
-    const isEmail = identifier.includes('@')
-    
-    let query = {}
-    
-    if (isEmail) {
-      // Direct search by email
-      query = { 'author.email': identifier }
-    } else {
-      // Search by username in author field
-      query = { 'author.email': { $regex: new RegExp(`${identifier}@`, 'i') } }
-    }
-    
-    console.log('🔍 Searching for posts with query:', query)
-    
-    // Get posts from database, sorted by creation date (newest first)
-    const posts = await profiles.collection('posts').find(query)
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray()
-      
-    console.log(`📊 Found ${posts.length} posts for user ${identifier}`)
-    
-    // Get current user profile to get the latest username
     const usersCollection = profiles.collection('users')
-    const userProfile = await usersCollection.findOne({ email: identifier })
-    
-    console.log(`🔍 User profile for ${identifier}:`, {
-      hasProfile: !!userProfile,
-      profileName: userProfile?.name,
-      profileUsername: userProfile?.username,
-      profileImage: userProfile?.image,
-      profileAvatar: userProfile?.avatar
-    })
-    
-    // Transform posts to match frontend format
-    const formattedPosts = posts.map((post) => {
-      console.log(`🔍 Post author data:`, {
-        authorName: post.author?.name,
-        authorEmail: post.author?.email,
-        authorImage: post.author?.image,
-        finalAvatar: userProfile?.image || post.author?.image || '/placeholder.svg'
+
+    let userEmail = identifier
+    if (!identifier.includes('@')) {
+      const profileMatch = await usersCollection.findOne({
+        username: { $regex: new RegExp(`^${identifier}$`, 'i') }
       })
-      
-      return {
-        id: post._id.toString(),
-        user: {
-          name: userProfile?.name || post.author?.name || 'Anonymous',
-          username: userProfile?.username || post.author?.email?.split('@')[0] || 'anonymous',
-          avatar: userProfile?.image || post.author?.image || '/placeholder.svg',
-          verified: false,
-          email: post.author?.email,
-        },
-        content: post.content || '',
-        timestamp: formatTimestamp(post.createdAt),
-        likes: post.likes || 0,
-        replies: post.replies || 0,
-        reposts: post.reposts || 0,
-        image: post.images && post.images.length > 0 ? post.images[0] : null,
-        images: post.images || [],
+
+      if (profileMatch?.email) {
+        userEmail = profileMatch.email
+      }
+    }
+
+    if (!userEmail) {
+      return NextResponse.json([], { status: 200 })
+    }
+
+    const postsCollection = profiles.collection('posts')
+    const posts = await postsCollection.find({
+      'author.email': userEmail,
+      $or: [
+        { isRepost: { $exists: false } },
+        { isRepost: { $ne: true } }
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .toArray()
+
+    const relatedEmails = Array.from(new Set(
+      posts.flatMap(post => [post.author?.email, post.originalAuthor?.email]).filter(Boolean) as string[]
+    ))
+
+    const profileDocs = relatedEmails.length > 0
+      ? await usersCollection.find({ email: { $in: relatedEmails } }).toArray()
+      : []
+
+    const profileMap = new Map<string, any>()
+    profileDocs.forEach(doc => {
+      if (doc?.email) {
+        profileMap.set(doc.email, doc)
       }
     })
-    
-    console.log('📝 Formatted posts:', formattedPosts.length)
-    
+
+    const formattedPosts = posts.map((post) => {
+      const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
+      const repostedBy = Array.isArray(post.repostedBy) ? post.repostedBy : []
+      const likesCount = likedBy.length || (typeof post.likes === 'number' ? post.likes : 0)
+      const repostsCount = repostedBy.length || (typeof post.reposts === 'number' ? post.reposts : 0)
+      const content = typeof post.content === 'string' ? post.content : ''
+
+      const authorProfile = post.author?.email ? profileMap.get(post.author.email) : null
+      const displayUser = buildUserPayload(authorProfile, post.author)
+
+      const timestamp = (() => {
+        if (post.createdAt) {
+          const date = new Date(post.createdAt)
+          return isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
+        }
+        if (post.timestamp) {
+          const date = new Date(post.timestamp)
+          return isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
+        }
+        return new Date().toISOString()
+      })()
+
+      return {
+        id: post._id.toString(),
+        user: displayUser,
+        content,
+        timestamp,
+        likes: likesCount,
+        replies: Array.isArray(post.comments) ? post.comments.length : (post.replies || 0),
+        reposts: repostsCount,
+        image: Array.isArray(post.images) && post.images.length > 0 ? post.images[0] : null,
+        images: Array.isArray(post.images) ? post.images : [],
+        isLiked: currentUserEmail ? likedBy.includes(currentUserEmail) : false,
+        isReposted: currentUserEmail ? repostedBy.includes(currentUserEmail) : false,
+        canEdit: currentUserEmail ? (currentUserEmail === post.author?.email && !post.isRepost) : false,
+        repostContext: null,
+        originalPostId: normalizeId(post.originalPostId),
+        isRepostEntry: Boolean(post.isRepost)
+      }
+    })
+
     return NextResponse.json(formattedPosts)
   } catch (error) {
     console.error('Error fetching user posts from MongoDB Atlas:', error)
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch user posts',
         message: error instanceof Error ? error.message : 'Unknown database error'
       },

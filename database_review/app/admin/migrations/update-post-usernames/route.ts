@@ -1,0 +1,2 @@
+export const dynamic = 'force-dynamic'
+export function POST() { return new Response(JSON.stringify({ error: 'Database functionality removed' }), { status: 503, headers: { 'Content-Type': 'application/json' } }) }

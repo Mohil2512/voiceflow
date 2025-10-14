@@ -25,21 +25,27 @@ export async function GET(request: NextRequest) {
     }).sort({ createdAt: -1 }).limit(20).toArray()
 
     // Format posts for frontend
-    const formattedPosts = posts.map(post => ({
-      _id: post._id.toString(),
-      content: post.content,
-      createdAt: post.createdAt,
-      author: {
-        name: post.author?.name || 'Unknown User',
-        email: post.author?.email || '',
-        image: post.author?.image || null,
-        username: post.author?.username || post.author?.email?.split('@')[0] || 'unknown',
-        isVerified: post.author?.isVerified || false
-      },
-      likes: post.likes || [],
-      comments: post.comments || [],
-      images: post.images || []
-    }))
+    const formattedPosts = posts.map(post => {
+      const likedBy = Array.isArray(post.likedBy) ? post.likedBy : []
+      const repostedBy = Array.isArray(post.repostedBy) ? post.repostedBy : []
+
+      return {
+        _id: post._id.toString(),
+        content: post.content,
+        createdAt: post.createdAt,
+        author: {
+          name: post.author?.name || 'Unknown User',
+          email: post.author?.email || '',
+          image: post.author?.image || null,
+          username: post.author?.username || post.author?.email?.split('@')[0] || 'unknown',
+          isVerified: post.author?.isVerified || false
+        },
+        likes: likedBy,
+        reposts: repostedBy,
+        comments: post.comments || [],
+        images: Array.isArray(post.images) ? post.images : []
+      }
+    })
 
     return NextResponse.json(formattedPosts)
   } catch (error) {

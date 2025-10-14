@@ -28,6 +28,15 @@ interface Post {
   isLiked?: boolean;
   isReposted?: boolean;
   image?: string;
+  canEdit?: boolean;
+  repostContext?: {
+    name?: string;
+    username?: string;
+    avatar?: string;
+    email?: string;
+  };
+  originalPostId?: string | null;
+  isRepostEntry?: boolean;
   [key: string]: any;
 }
 
@@ -165,6 +174,10 @@ export default function HomePage() {
                   images={post.images || []}
                   isLiked={post.isLiked || false}
                   isReposted={post.isReposted || false}
+                  canEdit={post.canEdit}
+                  repostContext={post.repostContext}
+                  originalPostId={post.originalPostId}
+                  isRepostEntry={post.isRepostEntry}
                   onPostUpdate={fetchPosts}
                 />
               ))

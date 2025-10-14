@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
 import { uploadImage } from '@/lib/cloudinary'
+import { serverEnv } from '@/lib/env'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,15 +21,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse FormData instead of JSON
-    const formData = await request.formData()
-    const content = formData.get('content') as string
+  const formData = await request.formData()
+  const rawContent = formData.get('content')
+  const content = typeof rawContent === 'string' ? rawContent : ''
+  const trimmedContent = content.trim()
     
     // Handle multiple image uploads
     const imageFiles = formData.getAll('images') as File[]
     let imageUrls: string[] = []
 
     console.log('📝 Post creation request:')
-    console.log('  Content:', content)
+  console.log('  Content:', content)
     console.log('  Image files count:', imageFiles.length)
     console.log('  FormData keys:', Array.from(formData.keys()))
     
@@ -42,15 +45,28 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (!content || content.trim().length === 0) {
+    const hasImagesInPayload = imageFiles.some(file => file && file.size > 0)
+
+    if (!trimmedContent && !hasImagesInPayload) {
       return NextResponse.json(
-        { error: 'Post content is required' },
+        { error: 'Add text or at least one image before posting.' },
         { status: 400 }
       )
     }
 
     // Upload images to Cloudinary if any
     if (imageFiles.length > 0) {
+      if (!serverEnv.CLOUDINARY_CLOUD_NAME || !serverEnv.CLOUDINARY_API_KEY || !serverEnv.CLOUDINARY_API_SECRET) {
+        return NextResponse.json(
+          {
+            error: 'Image uploads are not configured for this deployment.',
+            details: 'Missing Cloudinary environment variables (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).',
+            code: 'CLOUDINARY_CONFIG_MISSING'
+          },
+          { status: 500 }
+        )
+      }
+
       console.log(`🔥 Uploading ${imageFiles.length} images to Cloudinary...`)
       
       for (const imageFile of imageFiles) {
@@ -68,10 +84,11 @@ export async function POST(request: NextRequest) {
             const uploadResult = await uploadImage(base64, {
               public_id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               transformation: [
-                { width: 800, height: 600, crop: 'limit' },
-                { quality: 'auto' },
+                { width: 1280, height: 1280, crop: 'limit' },
+                { quality: 'auto:good' },
                 { fetch_format: 'auto' }
-              ]
+              ],
+              format: 'webp'
             })
             
             console.log('🔥 Cloudinary upload result:', uploadResult)
@@ -81,9 +98,26 @@ export async function POST(request: NextRequest) {
               console.log('✅ Image uploaded successfully:', uploadResult.data.secure_url)
             } else {
               console.error('❌ Failed to upload image:', uploadResult.error)
+              return NextResponse.json(
+                {
+                  error: 'Image upload failed.',
+                  details: uploadResult.error || 'Unknown upload error',
+                  code: 'CLOUDINARY_UPLOAD_FAILED'
+                },
+                { status: 502 }
+              )
             }
           } catch (error) {
             console.error('💥 Error processing image:', error)
+            const message = error instanceof Error ? error.message : 'Unknown error while processing image'
+            return NextResponse.json(
+              {
+                error: 'Unable to process image for upload.',
+                details: message,
+                code: 'IMAGE_PROCESSING_FAILED'
+              },
+              { status: 500 }
+            )
           }
         } else {
           console.log('⚠️ Skipping empty or invalid image file')
@@ -101,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     // Create new post
     const newPost = {
-      content: content.trim(),
+      content: trimmedContent,
       author: {
         name: session.user.name,
         email: session.user.email,
@@ -111,8 +145,10 @@ export async function POST(request: NextRequest) {
       location: null,
       createdAt: new Date(),
       likes: 0,
+      likedBy: [],
       replies: 0,
-      reposts: 0
+      reposts: 0,
+      repostedBy: []
     }
 
     // Insert post into database

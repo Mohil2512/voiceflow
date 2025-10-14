@@ -51,4 +51,3 @@ A modern social media platform built with Next.js, featuring OAuth authenticatio
 
 ---
 
-*Built with ❤️ using Next.js and modern web technologies.*

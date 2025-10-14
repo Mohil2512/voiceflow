@@ -26,6 +26,9 @@ export function EditPostModal({ isOpen, onClose, post, onSuccess }: EditPostModa
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
+  const hasText = content.trim().length > 0
+  const hasAnyImages = existingImages.length > 0 || newImages.length > 0
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const validFiles = files.filter(file => file.type.startsWith('image/'))
@@ -46,10 +49,13 @@ export function EditPostModal({ isOpen, onClose, post, onSuccess }: EditPostModa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!content.trim()) {
+  const hasContent = content.trim().length > 0
+  const hasImages = existingImages.length > 0 || newImages.length > 0
+
+    if (!hasContent && !hasImages) {
       toast({
         title: "Error",
-        description: "Post content cannot be empty",
+        description: "Add text or at least one image before saving",
         variant: "destructive"
       })
       return
@@ -58,8 +64,8 @@ export function EditPostModal({ isOpen, onClose, post, onSuccess }: EditPostModa
     setIsSubmitting(true)
 
     try {
-      const formData = new FormData()
-      formData.append('content', content.trim())
+    const formData = new FormData()
+    formData.append('content', content.trim())
       
       // Add new images to formData
       newImages.forEach(image => {
@@ -189,7 +195,7 @@ export function EditPostModal({ isOpen, onClose, post, onSuccess }: EditPostModa
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !content.trim()}
+                disabled={isSubmitting || (!hasText && !hasAnyImages)}
               >
                 {isSubmitting ? 'Updating...' : 'Update Post'}
               </Button>
