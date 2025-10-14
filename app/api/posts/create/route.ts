@@ -168,8 +168,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating post:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    console.error('Error details:', { message: errorMessage, stack: errorStack })
+    
     return NextResponse.json(
-      { error: 'Failed to create post' },
+      { 
+        error: 'Failed to create post',
+        details: errorMessage,
+        code: 'POST_CREATION_ERROR'
+      },
       { status: 500 }
     )
   }

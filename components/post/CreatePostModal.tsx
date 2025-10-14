@@ -155,19 +155,31 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
         const errorDetails = responseData.details || ''
         const errorCode = responseData.code || ''
         
-        console.error('Failed to create post:', errorMessage, errorDetails, errorCode)
+        console.error('Failed to create post:', {
+          status: response.status,
+          message: errorMessage,
+          details: errorDetails,
+          code: errorCode,
+          fullResponse: responseData
+        })
         
-        let userMessage = `Failed to create post: ${errorMessage}`
+        let userMessage = errorMessage
         
         // Add helpful instructions based on error type
-        if (errorCode === 'MONGODB_SSL_ERROR') {
-          userMessage += '\n\nTry refreshing the page or contact support if the issue persists.'
+        if (errorCode === 'CLOUDINARY_CONFIG_MISSING') {
+          userMessage = 'Image uploads are not available. Please try posting without images.'
+        } else if (errorCode === 'CLOUDINARY_UPLOAD_FAILED') {
+          userMessage = `Failed to upload image: ${errorDetails || 'Unknown error'}`
+        } else if (errorCode === 'IMAGE_PROCESSING_FAILED') {
+          userMessage = `Unable to process image: ${errorDetails || 'Unknown error'}`
+        } else if (errorCode === 'MONGODB_SSL_ERROR') {
+          userMessage = 'Database connection error. Try refreshing the page.'
         } else if (errorCode === 'MONGODB_AUTH_ERROR') {
-          userMessage += '\n\nPlease check if MongoDB Atlas credentials are correct.'
+          userMessage = 'Authentication error. Please contact support.'
         } else if (errorCode === 'MONGODB_TIMEOUT') {
-          userMessage += '\n\nCheck your internet connection and try again.'
+          userMessage = 'Connection timeout. Check your internet and try again.'
         } else if (errorDetails) {
-          userMessage += `\n\nDetails: ${errorDetails}`
+          userMessage = `${errorMessage}: ${errorDetails}`
         }
         
         alert(userMessage)
