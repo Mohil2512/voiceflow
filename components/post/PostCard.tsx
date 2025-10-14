@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { EditPostModal } from "./EditPostModal"
 import { ImageModal } from "@/components/ui/image-modal"
+import { CommentSection } from "./CommentSection"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -74,6 +75,7 @@ export function PostCard({
   const [isDeleting, setIsDeleting] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [showComments, setShowComments] = useState(false)
 
   useEffect(() => {
     setLiked(isLiked)
@@ -269,8 +271,7 @@ export function PostCard({
 
   const handleReply = () => {
     requireAuth(() => {
-      // TODO: Open reply modal or navigate to reply page
-      console.log('Reply functionality to be implemented')
+      setShowComments(!showComments)
     })
   }
 
@@ -488,6 +489,15 @@ export function PostCard({
         isOpen={showImageModal}
         onClose={() => setShowImageModal(false)}
       />
+
+      {/* Comment Section */}
+      {id && (
+        <CommentSection
+          postId={id}
+          isOpen={showComments}
+          onClose={() => setShowComments(false)}
+        />
+      )}
     </div>
   )
 }

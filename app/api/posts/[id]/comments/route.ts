@@ -63,7 +63,7 @@ export async function POST(
 
     const { id } = params
     const body = await request.json()
-    const { content } = body
+    const { content, parentId } = body
 
     if (!id || !content?.trim()) {
       return NextResponse.json(
@@ -82,32 +82,53 @@ export async function POST(
 
     // Create comment object
     const comment = {
-      id: new ObjectId().toString(),
+      _id: new ObjectId().toString(),
       content: content.trim(),
       author: {
         name: session.user.name || 'Anonymous',
         email: session.user.email,
         username: username,
-        image: userProfile?.image || session.user.image || ''
+        avatar: userProfile?.image || session.user.image || ''
       },
       createdAt: new Date(),
-      timestamp: new Date().toISOString()
+      replies: []
     }
 
-    // Add comment to post
-    const result = await postsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { 
-        $push: { comments: comment },
-        $inc: { replies: 1 }
-      } as unknown as UpdateFilter<Document>
-    )
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { error: 'Post not found' },
-        { status: 404 }
+    // If parentId is provided, add as nested reply
+    if (parentId) {
+      // Add reply to parent comment
+      const result = await postsCollection.updateOne(
+        { 
+          _id: new ObjectId(id),
+          'comments._id': parentId
+        },
+        { 
+          $push: { 'comments.$.replies': comment }
+        } as unknown as UpdateFilter<Document>
       )
+
+      if (result.matchedCount === 0) {
+        return NextResponse.json(
+          { error: 'Parent comment not found' },
+          { status: 404 }
+        )
+      }
+    } else {
+      // Add as top-level comment
+      const result = await postsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { 
+          $push: { comments: comment },
+          $inc: { replies: 1 }
+        } as unknown as UpdateFilter<Document>
+      )
+
+      if (result.matchedCount === 0) {
+        return NextResponse.json(
+          { error: 'Post not found' },
+          { status: 404 }
+        )
+      }
     }
 
     return NextResponse.json({
