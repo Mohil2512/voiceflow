@@ -13,7 +13,7 @@ import { toast } from "@/components/ui/use-toast"
 import { X, Camera, Loader2 } from "lucide-react"
 
 type ProfileData = {
-  id?: string
+  id?: string | null
   name?: string | null
   username?: string | null
   image?: string | null
