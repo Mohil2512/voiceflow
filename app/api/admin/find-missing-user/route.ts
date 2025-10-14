@@ -3,6 +3,14 @@ import { getDatabases } from '@/lib/database/mongodb'
 
 export const dynamic = 'force-dynamic'
 
+interface OrphanedPost {
+  postId: string
+  authorEmail: string
+  authorName?: string
+  authorUsername?: string
+  content?: string
+}
+
 // Find posts with author info that doesn't match any user
 export async function GET() {
   try {
@@ -18,16 +26,16 @@ export async function GET() {
     const userEmails = new Set(users.map(u => u.email))
     
     // Find posts from non-existent users
-    const orphanedPosts = []
+    const orphanedPosts: OrphanedPost[] = []
     for (const post of posts) {
       const authorEmail = post.author?.email
       if (authorEmail && !userEmails.has(authorEmail)) {
         orphanedPosts.push({
           postId: post._id.toString(),
           authorEmail: authorEmail,
-          authorName: post.author?.name,
-          authorUsername: post.author?.username,
-          content: post.content?.substring(0, 50)
+          authorName: post.author?.name || undefined,
+          authorUsername: post.author?.username || undefined,
+          content: post.content?.substring(0, 50) || undefined
         })
       }
     }
