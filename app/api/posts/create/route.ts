@@ -131,7 +131,12 @@ export async function POST(request: NextRequest) {
 
     // Connect to database using getDatabases
     const { profiles } = await getDatabases()
-    const collection = profiles.collection('posts')
+    const usersCollection = profiles.collection('users')
+    const postsCollection = profiles.collection('posts')
+
+    // Get user profile to include username
+    const userProfile = await usersCollection.findOne({ email: session.user.email })
+    const username = userProfile?.username || session.user.name?.toLowerCase().replace(/\s+/g, '') || session.user.email.split('@')[0]
 
     // Create new post
     const newPost = {
@@ -139,6 +144,7 @@ export async function POST(request: NextRequest) {
       author: {
         name: session.user.name,
         email: session.user.email,
+        username: username,
         image: session.user.image || ''
       },
       images: imageUrls,
@@ -148,11 +154,12 @@ export async function POST(request: NextRequest) {
       likedBy: [],
       replies: 0,
       reposts: 0,
-      repostedBy: []
+      repostedBy: [],
+      comments: []
     }
 
     // Insert post into database
-    const result = await collection.insertOne(newPost)
+    const result = await postsCollection.insertOne(newPost)
 
     console.log('Post created successfully:', result.insertedId)
 
