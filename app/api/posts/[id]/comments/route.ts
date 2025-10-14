@@ -9,12 +9,12 @@ export const dynamic = 'force-dynamic'
 // GET comments for a post
 export async function GET(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { postId } = params
+    const { id } = params
 
-    if (!postId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Post ID is required' },
         { status: 400 }
@@ -25,7 +25,7 @@ export async function GET(
     const postsCollection = profiles.collection('posts')
 
     // Find the post
-    const post = await postsCollection.findOne({ _id: new ObjectId(postId) })
+    const post = await postsCollection.findOne({ _id: new ObjectId(id) })
 
     if (!post) {
       return NextResponse.json(
@@ -49,7 +49,7 @@ export async function GET(
 // POST a new comment
 export async function POST(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -61,11 +61,11 @@ export async function POST(
       )
     }
 
-    const { postId } = params
+    const { id } = params
     const body = await request.json()
     const { content } = body
 
-    if (!postId || !content?.trim()) {
+    if (!id || !content?.trim()) {
       return NextResponse.json(
         { error: 'Post ID and comment content are required' },
         { status: 400 }
@@ -96,7 +96,7 @@ export async function POST(
 
     // Add comment to post
     const result = await postsCollection.updateOne(
-      { _id: new ObjectId(postId) },
+      { _id: new ObjectId(id) },
       { 
         $push: { comments: comment },
         $inc: { replies: 1 }
