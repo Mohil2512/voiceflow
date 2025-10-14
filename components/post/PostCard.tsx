@@ -14,6 +14,13 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 
+interface CommentWithReplies {
+  _id: string
+  content: string
+  replies?: CommentWithReplies[]
+  [key: string]: unknown
+}
+
 interface PostCardProps {
   id?: string
   user?: {
@@ -51,7 +58,7 @@ export function PostCard({
   content,
   timestamp,
   likes = 0,
-  replies = 0,
+  replies: _replies = 0, // Unused - we fetch commentCount dynamically instead
   reposts = 0,
   image,
   images = [],
@@ -102,9 +109,9 @@ export function PostCard({
         const response = await fetch(`/api/posts/${id}/comments`)
         if (response.ok) {
           const data = await response.json()
-          const comments = data.comments || []
+          const comments: CommentWithReplies[] = data.comments || []
           // Count all comments including nested replies
-          const countAllComments = (commentsList: any[]): number => {
+          const countAllComments = (commentsList: CommentWithReplies[]): number => {
             return commentsList.reduce((total, comment) => {
               const replyCount = comment.replies ? countAllComments(comment.replies) : 0
               return total + 1 + replyCount
@@ -530,8 +537,8 @@ export function PostCard({
             fetch(`/api/posts/${id}/comments`)
               .then(res => res.json())
               .then(data => {
-                const comments = data.comments || []
-                const countAllComments = (commentsList: any[]): number => {
+                const comments: CommentWithReplies[] = data.comments || []
+                const countAllComments = (commentsList: CommentWithReplies[]): number => {
                   return commentsList.reduce((total, comment) => {
                     const replyCount = comment.replies ? countAllComments(comment.replies) : 0
                     return total + 1 + replyCount
