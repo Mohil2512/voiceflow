@@ -76,6 +76,7 @@ export function PostCard({
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [showComments, setShowComments] = useState(false)
+  const [commentCount, setCommentCount] = useState(0)
 
   useEffect(() => {
     setLiked(isLiked)
@@ -92,6 +93,31 @@ export function PostCard({
   useEffect(() => {
     setRepostsCount(reposts)
   }, [reposts])
+
+  // Fetch comment count when post ID changes
+  useEffect(() => {
+    const fetchCommentCount = async () => {
+      if (!id) return
+      try {
+        const response = await fetch(`/api/posts/${id}/comments`)
+        if (response.ok) {
+          const data = await response.json()
+          const comments = data.comments || []
+          // Count all comments including nested replies
+          const countAllComments = (commentsList: any[]): number => {
+            return commentsList.reduce((total, comment) => {
+              const replyCount = comment.replies ? countAllComments(comment.replies) : 0
+              return total + 1 + replyCount
+            }, 0)
+          }
+          setCommentCount(countAllComments(comments))
+        }
+      } catch (error) {
+        console.error('Error fetching comment count:', error)
+      }
+    }
+    fetchCommentCount()
+  }, [id, showComments]) // Refetch when comments are closed to update count
   
   // Ensure we have valid user data
   if (!user) {
@@ -422,11 +448,13 @@ export function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center space-x-1 md:space-x-2 text-muted-foreground hover:text-primary p-0 h-auto transition-colors"
+                className={`flex items-center space-x-1 md:space-x-2 p-0 h-auto transition-colors ${
+                  showComments ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+                }`}
                 onClick={handleReply}
               >
-                <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
-                {replies > 0 && <span className="text-xs md:text-sm">{replies}</span>}
+                <MessageCircle className={`w-4 h-4 md:w-5 md:h-5 ${showComments ? 'fill-primary' : ''}`} />
+                {commentCount > 0 && <span className="text-xs md:text-sm">{commentCount}</span>}
               </Button>
               
               <Button
@@ -496,6 +524,23 @@ export function PostCard({
           postId={id}
           isOpen={showComments}
           onClose={() => setShowComments(false)}
+          onCommentAdded={() => {
+            // Refetch comment count when a new comment is added
+            if (!id) return
+            fetch(`/api/posts/${id}/comments`)
+              .then(res => res.json())
+              .then(data => {
+                const comments = data.comments || []
+                const countAllComments = (commentsList: any[]): number => {
+                  return commentsList.reduce((total, comment) => {
+                    const replyCount = comment.replies ? countAllComments(comment.replies) : 0
+                    return total + 1 + replyCount
+                  }, 0)
+                }
+                setCommentCount(countAllComments(comments))
+              })
+              .catch(err => console.error('Error updating comment count:', err))
+          }}
         />
       )}
     </div>

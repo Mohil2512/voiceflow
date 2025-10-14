@@ -25,9 +25,10 @@ interface CommentSectionProps {
   postId: string
   isOpen: boolean
   onClose: () => void
+  onCommentAdded?: () => void
 }
 
-export function CommentSection({ postId, isOpen, onClose }: CommentSectionProps) {
+export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: CommentSectionProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [comments, setComments] = useState<Comment[]>([])
@@ -93,6 +94,7 @@ export function CommentSection({ postId, isOpen, onClose }: CommentSectionProps)
       if (response.ok) {
         setNewComment("")
         await fetchComments()
+        onCommentAdded?.() // Notify parent to update comment count
         toast({
           title: "Success",
           description: "Comment posted successfully",
@@ -149,6 +151,7 @@ export function CommentSection({ postId, isOpen, onClose }: CommentSectionProps)
         setReplyContent("")
         setReplyingTo(null)
         await fetchComments()
+        onCommentAdded?.() // Notify parent to update comment count
         toast({
           title: "Success",
           description: "Reply posted successfully",
