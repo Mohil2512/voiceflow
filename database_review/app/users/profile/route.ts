@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest) {
       // Upload to Cloudinary
       const { uploadImage } = await import('@/lib/cloudinary')
       try {
-        const uploadResult = await uploadImage(base64, 'profile')
+        const uploadResult = await uploadImage(base64, { folder: 'profile' })
         if (uploadResult.success && uploadResult.data) {
           avatarUrl = uploadResult.data.secure_url
           console.log('✅ Avatar uploaded to Cloudinary:', avatarUrl)
