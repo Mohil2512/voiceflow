@@ -56,22 +56,88 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
     fetchCurrentUser()
   }, [session?.user?.email])
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new window.Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          let width = img.width
+          let height = img.height
+          
+          // Resize if image is too large
+          const MAX_WIDTH = 1920
+          const MAX_HEIGHT = 1920
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width
+              width = MAX_WIDTH
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height
+              height = MAX_HEIGHT
+            }
+          }
+          
+          canvas.width = width
+          canvas.height = height
+          
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0, width, height)
+          
+          // Convert to blob with quality compression
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                })
+                resolve(compressedFile)
+              } else {
+                reject(new Error('Canvas to Blob conversion failed'))
+              }
+            },
+            'image/jpeg',
+            0.8 // 80% quality
+          )
+        }
+        img.onerror = reject
+        img.src = e.target?.result as string
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
     
-    files.forEach(file => {
+    for (const file of files) {
       if (file.type.startsWith('image/')) {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setImages(prev => [...prev, {
-            id: Date.now() + Math.random(),
-            file: file,
-            preview: e.target?.result as string
-          }])
+        try {
+          // Compress the image before adding
+          const compressedFile = await compressImage(file)
+          console.log(`Original size: ${(file.size / 1024).toFixed(2)}KB, Compressed size: ${(compressedFile.size / 1024).toFixed(2)}KB`)
+          
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            setImages(prev => [...prev, {
+              id: Date.now() + Math.random(),
+              file: compressedFile,
+              preview: e.target?.result as string
+            }])
+          }
+          reader.readAsDataURL(compressedFile)
+        } catch (error) {
+          console.error('Error compressing image:', error)
+          alert('Failed to process image. Please try a different image.')
         }
-        reader.readAsDataURL(file)
       }
-    })
+    }
   }
 
   const removeImage = (imageId: number) => {
@@ -92,13 +158,24 @@ export function CreatePostModal({ trigger, onPostCreated }: CreatePostModalProps
       const formData = new FormData()
       formData.append('content', content)
       
-      // Add all images to form data if they exist
+      // Calculate total size and warn if too large
+      let totalSize = 0
       images.forEach((image) => {
+        totalSize += image.file.size
         formData.append('images', image.file)
       })
+      
+      // Vercel has a 4.5MB limit for serverless function body
+      const MAX_BODY_SIZE = 4 * 1024 * 1024 // 4MB to be safe
+      if (totalSize > MAX_BODY_SIZE) {
+        alert(`Images are too large (${(totalSize / 1024 / 1024).toFixed(2)}MB). Please reduce the number of images or try smaller files.`)
+        setIsPosting(false)
+        return
+      }
 
       console.log('Sending post with content:', content)
       console.log('Images count:', images.length)
+      console.log('Total payload size:', (totalSize / 1024).toFixed(2), 'KB')
 
       // Create a temporary local post to display immediately
       const tempPost = {
