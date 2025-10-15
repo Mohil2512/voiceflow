@@ -10,6 +10,7 @@ import { InlineLoginPrompt } from '@/components/layout/InlineLoginPrompt'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EditProfileCard } from '@/components/profile/EditProfileCard'
+import { FollowModal } from '@/components/profile/FollowModal'
 
 interface UserProfile {
   id?: string | null
@@ -19,6 +20,8 @@ interface UserProfile {
   bio?: string | null
   username?: string | null
   isVerified?: boolean
+  followers?: string[]
+  following?: string[]
 }
 
 interface Post {
@@ -60,6 +63,8 @@ export default function Profile() {
   const [mounted, setMounted] = useState(false)
   const [showEditProfile, setShowEditProfile] = useState(false)
   const [activeTab, setActiveTab] = useState('posts')
+  const [followModalOpen, setFollowModalOpen] = useState(false)
+  const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers')
 
   const fetchProfileData = useCallback(async (userEmail: string) => {
     if (!userEmail) return
@@ -195,6 +200,26 @@ export default function Profile() {
               )}
               <div className="flex gap-4 text-sm text-muted-foreground">
                 <span>{Array.isArray(posts) ? posts.length : 0} posts</span>
+                <button
+                  onClick={() => {
+                    setFollowModalTab('followers')
+                    setFollowModalOpen(true)
+                  }}
+                  className="hover:underline cursor-pointer"
+                >
+                  <span className="font-semibold">{profile?.followers?.length || 0}</span>{" "}
+                  <span>Followers</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setFollowModalTab('following')
+                    setFollowModalOpen(true)
+                  }}
+                  className="hover:underline cursor-pointer"
+                >
+                  <span className="font-semibold">{profile?.following?.length || 0}</span>{" "}
+                  <span>Following</span>
+                </button>
               </div>
             </div>
             
@@ -306,6 +331,16 @@ export default function Profile() {
                 fetchUserReposts(session.user.email)
               }
             }}
+          />
+        )}
+
+        {/* Follow Modal */}
+        {profile?.username && (
+          <FollowModal
+            username={profile.username}
+            isOpen={followModalOpen}
+            onClose={() => setFollowModalOpen(false)}
+            initialTab={followModalTab}
           />
         )}
       </div>

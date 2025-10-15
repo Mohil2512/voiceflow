@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession } from "next-auth/react"
 import { MapPin, Link as LinkIcon, Calendar } from "lucide-react"
 import { useDataWithCache } from '@/hooks/use-data-cache'
+import { FollowModal } from "@/components/profile/FollowModal"
 
 type FollowStats = {
   followers: number
@@ -59,6 +60,8 @@ export default function UserProfilePage({ params }: { params: { username: string
   const [isSelf, setIsSelf] = useState(false)
   const [followStats, setFollowStats] = useState<FollowStats>({ followers: 0, following: 0 })
   const [followLoading, setFollowLoading] = useState(false)
+  const [followModalOpen, setFollowModalOpen] = useState(false)
+  const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers')
 
   const handleFollowHover = (event: MouseEvent<HTMLButtonElement>) => {
     if (isFollowing && !followLoading) {
@@ -381,14 +384,26 @@ export default function UserProfilePage({ params }: { params: { username: string
               </div>
 
               <div className="flex gap-5 mt-4">
-                <div>
-                  <span className="font-semibold">{userProfile.following || 0}</span>{" "}
+                <button
+                  onClick={() => {
+                    setFollowModalTab('following')
+                    setFollowModalOpen(true)
+                  }}
+                  className="hover:underline cursor-pointer"
+                >
+                  <span className="font-semibold">{followStats.following}</span>{" "}
                   <span className="text-muted-foreground">Following</span>
-                </div>
-                <div>
-                  <span className="font-semibold">{userProfile.followers || 0}</span>{" "}
+                </button>
+                <button
+                  onClick={() => {
+                    setFollowModalTab('followers')
+                    setFollowModalOpen(true)
+                  }}
+                  className="hover:underline cursor-pointer"
+                >
+                  <span className="font-semibold">{followStats.followers}</span>{" "}
                   <span className="text-muted-foreground">Followers</span>
-                </div>
+                </button>
               </div>
             </div>
             
@@ -490,6 +505,13 @@ export default function UserProfilePage({ params }: { params: { username: string
           </div>
         </div>
       </div>
+
+      <FollowModal
+        username={username}
+        isOpen={followModalOpen}
+        onClose={() => setFollowModalOpen(false)}
+        initialTab={followModalTab}
+      />
     </Layout>
   )
 }
