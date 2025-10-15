@@ -71,7 +71,7 @@ export async function GET() {
       };
     }));
 
-    const normalizedNotifications = enhancedNotifications.map((notification) => ({
+    const normalizedNotifications = enhancedNotifications.map((notification: any) => ({
       ...notification,
       _id: notification._id instanceof ObjectId ? notification._id.toString() : String(notification._id ?? ''),
       createdAt: notification.createdAt instanceof Date ? notification.createdAt.toISOString() : notification.createdAt,
