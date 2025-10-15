@@ -177,7 +177,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
     setReplyContent(prev => ({ ...prev, [commentId]: value }))
   }, [])
 
-  const CommentItem = memo(({ comment, depth = 0 }: { comment: Comment; depth?: number }) => {
+  const CommentItem = memo(function CommentItem({ comment, depth = 0 }: { comment: Comment; depth?: number }) {
     const [showReplies, setShowReplies] = useState(true)
     const isReplying = replyingTo === comment._id
     const hasReplies = comment.replies && comment.replies.length > 0

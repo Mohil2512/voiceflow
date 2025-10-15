@@ -199,7 +199,7 @@ export async function GET(
     )
 
     // Get profiles from both databases
-    let profileDocs: any[] = []
+    let profileDocs: (WithId<Document>)[] = []
     if (relatedEmails.length > 0) {
       const authProfiles = await authUsersCollection.find({ email: { $in: relatedEmails } }).toArray()
       const profilesProfiles = await profilesUsersCollection.find({ email: { $in: relatedEmails } }).toArray()
