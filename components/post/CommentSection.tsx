@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -36,7 +36,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyContent, setReplyContent] = useState("")
+  const [replyContent, setReplyContent] = useState<Record<string, string>>({})
 
   const fetchComments = async () => {
     setIsLoading(true)
@@ -125,7 +125,8 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
       return
     }
 
-    if (!replyContent.trim()) {
+    const content = replyContent[parentCommentId] || ""
+    if (!content.trim()) {
       toast({
         title: "Empty reply",
         description: "Please write something before posting",
@@ -142,13 +143,13 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: replyContent.trim(),
+          content: content.trim(),
           parentId: parentCommentId,
         }),
       })
 
       if (response.ok) {
-        setReplyContent("")
+        setReplyContent(prev => ({ ...prev, [parentCommentId]: "" }))
         setReplyingTo(null)
         await fetchComments()
         onCommentAdded?.() // Notify parent to update comment count
@@ -207,7 +208,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
                 onClick={() => {
                   if (isReplying) {
                     setReplyingTo(null)
-                    setReplyContent("")
+                    setReplyContent(prev => ({ ...prev, [comment._id]: "" }))
                   } else {
                     setReplyingTo(comment._id)
                   }
@@ -233,11 +234,12 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
             {isReplying && (
               <div className="mt-3 space-y-2">
                 <Textarea
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
+                  value={replyContent[comment._id] || ""}
+                  onChange={(e) => setReplyContent(prev => ({ ...prev, [comment._id]: e.target.value }))}
                   placeholder="Write your reply..."
                   className="min-h-[80px] resize-none"
                   disabled={isSubmitting}
+                  autoFocus
                 />
                 <div className="flex justify-end space-x-2">
                   <Button
@@ -245,7 +247,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
                     size="sm"
                     onClick={() => {
                       setReplyingTo(null)
-                      setReplyContent("")
+                      setReplyContent(prev => ({ ...prev, [comment._id]: "" }))
                     }}
                     disabled={isSubmitting}
                   >
@@ -254,7 +256,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
                   <Button
                     size="sm"
                     onClick={() => handleSubmitReply(comment._id)}
-                    disabled={isSubmitting || !replyContent.trim()}
+                    disabled={isSubmitting || !(replyContent[comment._id] || "").trim()}
                   >
                     {isSubmitting ? (
                       <>
