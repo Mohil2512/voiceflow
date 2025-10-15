@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -30,13 +30,7 @@ export function FollowModal({ isOpen, onClose, username, initialTab = "followers
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState(initialTab)
 
-  useEffect(() => {
-    if (isOpen && username) {
-      fetchFollowData()
-    }
-  }, [isOpen, username])
-
-  const fetchFollowData = async () => {
+  const fetchFollowData = useCallback(async () => {
     setIsLoading(true)
     try {
       // Fetch followers
@@ -57,7 +51,13 @@ export function FollowModal({ isOpen, onClose, username, initialTab = "followers
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [username])
+
+  useEffect(() => {
+    if (isOpen && username) {
+      fetchFollowData()
+    }
+  }, [isOpen, username, fetchFollowData])
 
   const handleUserClick = (clickedUsername: string) => {
     onClose()
