@@ -132,16 +132,24 @@ export async function GET(
     const currentUserEmail = session?.user?.email || null
 
     const { auth, profiles } = await getDatabases()
-    const usersCollection = auth.collection('user')
+    const authUsersCollection = auth.collection('user')
+    const profilesUsersCollection = profiles.collection('users')
 
     const postsCollection = profiles.collection('posts')
     let posts: PostDocument[] = []
 
-    // Try to find user in users collection first
+    // Try to find user in users collection first (check both databases)
     if (!identifier.includes('@')) {
-      const profileMatch = await usersCollection.findOne({
+      let profileMatch = await authUsersCollection.findOne({
         username: { $regex: new RegExp(`^${identifier}$`, 'i') }
       })
+
+      // If not in auth, try profiles database
+      if (!profileMatch) {
+        profileMatch = await profilesUsersCollection.findOne({
+          username: { $regex: new RegExp(`^${identifier}$`, 'i') }
+        })
+      }
 
       if (profileMatch?.email) {
         // User exists, get posts by email
@@ -190,9 +198,13 @@ export async function GET(
       )
     )
 
-    const profileDocs = relatedEmails.length > 0
-      ? await usersCollection.find({ email: { $in: relatedEmails } }).toArray()
-      : []
+    // Get profiles from both databases
+    let profileDocs: any[] = []
+    if (relatedEmails.length > 0) {
+      const authProfiles = await authUsersCollection.find({ email: { $in: relatedEmails } }).toArray()
+      const profilesProfiles = await profilesUsersCollection.find({ email: { $in: relatedEmails } }).toArray()
+      profileDocs = [...authProfiles, ...profilesProfiles]
+    }
 
     const profileMap = new Map<string, ProfileLike>()
     profileDocs.forEach(doc => {

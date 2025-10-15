@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, memo } from "react"
 import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -173,7 +173,11 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
     }
   }
 
-  const CommentItem = ({ comment, depth = 0 }: { comment: Comment; depth?: number }) => {
+  const handleReplyContentChange = useCallback((commentId: string, value: string) => {
+    setReplyContent(prev => ({ ...prev, [commentId]: value }))
+  }, [])
+
+  const CommentItem = memo(({ comment, depth = 0 }: { comment: Comment; depth?: number }) => {
     const [showReplies, setShowReplies] = useState(true)
     const isReplying = replyingTo === comment._id
     const hasReplies = comment.replies && comment.replies.length > 0
@@ -235,7 +239,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
               <div className="mt-3 space-y-2">
                 <Textarea
                   value={replyContent[comment._id] || ""}
-                  onChange={(e) => setReplyContent(prev => ({ ...prev, [comment._id]: e.target.value }))}
+                  onChange={(e) => handleReplyContentChange(comment._id, e.target.value)}
                   placeholder="Write your reply..."
                   className="min-h-[80px] resize-none"
                   disabled={isSubmitting}
@@ -286,7 +290,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
         </div>
       </div>
     )
-  }
+  })
 
   if (!isOpen) return null
 
