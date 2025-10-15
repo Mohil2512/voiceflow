@@ -3,17 +3,17 @@ import { getDatabases } from '@/lib/database/mongodb'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/users/[username]/following - Get list of users this user follows
+// GET /api/users/[identifier]/following - Get list of users this user follows
 export async function GET(
   request: NextRequest,
-  { params }: { params: { username: string } }
+  { params }: { params: { identifier: string } }
 ) {
   try {
-    const { username } = params
+    const { identifier } = params
 
-    if (!username) {
+    if (!identifier) {
       return NextResponse.json(
-        { error: 'Username is required' },
+        { error: 'Identifier is required' },
         { status: 400 }
       )
     }
@@ -21,9 +21,12 @@ export async function GET(
     const { profiles } = await getDatabases()
     const usersCollection = profiles.collection('users')
 
-    // Find the user
+    // Find the user by username or email
     const user = await usersCollection.findOne({
-      username: { $regex: new RegExp(`^${username}$`, 'i') }
+      $or: [
+        { username: { $regex: new RegExp(`^${identifier}$`, 'i') } },
+        { email: identifier }
+      ]
     })
 
     if (!user) {

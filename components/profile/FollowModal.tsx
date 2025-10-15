@@ -40,14 +40,14 @@ export function FollowModal({ isOpen, onClose, username, initialTab = "followers
     setIsLoading(true)
     try {
       // Fetch followers
-      const followersRes = await fetch(`/api/users/${username}/followers`)
+      const followersRes = await fetch(`/api/users/${encodeURIComponent(username)}/followers`)
       if (followersRes.ok) {
         const data = await followersRes.json()
         setFollowers(data.followers || [])
       }
 
       // Fetch following
-      const followingRes = await fetch(`/api/users/${username}/following`)
+      const followingRes = await fetch(`/api/users/${encodeURIComponent(username)}/following`)
       if (followingRes.ok) {
         const data = await followingRes.json()
         setFollowing(data.following || [])
