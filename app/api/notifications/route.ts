@@ -5,6 +5,21 @@ import { ObjectId } from 'mongodb'
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
 
+// Define notification type interface
+interface NotificationWithUser {
+  _id: ObjectId | string;
+  userEmail: string;
+  type: string;
+  content: string;
+  createdAt: Date | string;
+  read?: boolean;
+  fromUser?: {
+    email: string;
+    username?: string;
+  };
+  [key: string]: unknown; // Allow for additional properties
+}
+
 // Define auth options like in the post/create route
 const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -71,7 +86,7 @@ export async function GET() {
       };
     }));
 
-    const normalizedNotifications = enhancedNotifications.map((notification: any) => ({
+    const normalizedNotifications = enhancedNotifications.map((notification: NotificationWithUser) => ({
       ...notification,
       _id: notification._id instanceof ObjectId ? notification._id.toString() : String(notification._id ?? ''),
       createdAt: notification.createdAt instanceof Date ? notification.createdAt.toISOString() : notification.createdAt,
