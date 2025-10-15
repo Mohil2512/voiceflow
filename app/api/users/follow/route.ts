@@ -41,11 +41,19 @@ export async function POST(request: NextRequest) {
     const usersCollection = profiles.collection('users')
 
     // Find the target user by username (case-insensitive)
-    const targetUser = await usersCollection.findOne({
+    // Handle both username field and users without username (use email as fallback)
+    let targetUser = await usersCollection.findOne({
       username: { $regex: new RegExp(`^${targetUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
     })
 
-    console.log('[Follow API] Target user found:', targetUser ? { email: targetUser.email, username: targetUser.username } : 'NOT FOUND')
+    // If not found by username, try to find by email (for old users without username)
+    if (!targetUser) {
+      targetUser = await usersCollection.findOne({
+        email: targetUsername
+      })
+    }
+
+    console.log('[Follow API] Target user found:', targetUser ? { email: targetUser.email, username: targetUser.username || 'NO_USERNAME' } : 'NOT FOUND')
 
     if (!targetUser) {
       return NextResponse.json(

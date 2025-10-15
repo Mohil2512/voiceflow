@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, memo } from "react"
 import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { MessageCircle, Send, Loader2, Heart } from "lucide-react"
 
@@ -279,12 +278,11 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
             {/* Reply input */}
             {isReplying && (
               <div className="mt-2 md:mt-3 space-y-1.5 md:space-y-2">
-                <Textarea
-                  key={`reply-${comment._id}`}
+                <textarea
                   value={replyContent[comment._id] || ""}
                   onChange={(e) => handleReplyContentChange(comment._id, e.target.value)}
                   placeholder="Write your reply..."
-                  className="min-h-[50px] md:min-h-[80px] resize-none text-xs md:text-sm"
+                  className="w-full min-h-[50px] md:min-h-[80px] px-3 py-2 text-xs md:text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                   disabled={isSubmitting}
                   autoFocus
                 />
@@ -354,11 +352,11 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
               </Avatar>
               
               <div className="flex-1 space-y-2">
-                <Textarea
+                <textarea
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Add a comment..."
-                  className="min-h-[60px] md:min-h-[80px] resize-none text-sm md:text-base"
+                  className="w-full min-h-[60px] md:min-h-[80px] px-3 py-2 text-sm md:text-base rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                   disabled={isSubmitting}
                 />
                 <div className="flex justify-end">
