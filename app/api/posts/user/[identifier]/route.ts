@@ -131,35 +131,56 @@ export async function GET(
     const session = await getServerSession(authOptions)
     const currentUserEmail = session?.user?.email || null
 
-    const { profiles } = await getDatabases()
-    const usersCollection = profiles.collection('users')
+    const { auth, profiles } = await getDatabases()
+    const usersCollection = auth.collection('user')
 
-    let userEmail = identifier
+    const postsCollection = profiles.collection('posts')
+    let posts: PostDocument[] = []
+
+    // Try to find user in users collection first
     if (!identifier.includes('@')) {
       const profileMatch = await usersCollection.findOne({
         username: { $regex: new RegExp(`^${identifier}$`, 'i') }
       })
 
       if (profileMatch?.email) {
-        userEmail = profileMatch.email
+        // User exists, get posts by email
+        posts = (await postsCollection.find({
+          'author.email': profileMatch.email,
+          $or: [
+            { isRepost: { $exists: false } },
+            { isRepost: { $ne: true } }
+          ]
+        })
+          .sort({ createdAt: -1 })
+          .limit(100)
+          .toArray()) as PostDocument[]
+      } else {
+        // User not in users table, search posts by username directly
+        posts = (await postsCollection.find({
+          'author.username': { $regex: new RegExp(`^${identifier}$`, 'i') },
+          $or: [
+            { isRepost: { $exists: false } },
+            { isRepost: { $ne: true } }
+          ]
+        })
+          .sort({ createdAt: -1 })
+          .limit(100)
+          .toArray()) as PostDocument[]
       }
+    } else {
+      // Identifier is email, search by email
+      posts = (await postsCollection.find({
+        'author.email': identifier,
+        $or: [
+          { isRepost: { $exists: false } },
+          { isRepost: { $ne: true } }
+        ]
+      })
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray()) as PostDocument[]
     }
-
-    if (!userEmail) {
-      return NextResponse.json([], { status: 200 })
-    }
-
-    const postsCollection = profiles.collection('posts')
-    const posts = (await postsCollection.find({
-      'author.email': userEmail,
-      $or: [
-        { isRepost: { $exists: false } },
-        { isRepost: { $ne: true } }
-      ]
-    })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .toArray()) as PostDocument[]
 
     const relatedEmails = Array.from(
       new Set(

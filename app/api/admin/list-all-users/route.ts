@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET() {
   try {
-    const { profiles } = await getDatabases()
-    const usersCollection = profiles.collection('users')
+    const { auth } = await getDatabases()
+    const usersCollection = auth.collection('user')
 
     // Get all users
     const allUsers = await usersCollection.find({}).toArray()
