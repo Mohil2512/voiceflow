@@ -4,6 +4,7 @@ import { getDatabases } from '@/lib/database/mongodb'
 export const dynamic = 'force-dynamic'
 
 // DELETE /api/admin/cleanup-orphaned-posts - Remove posts from non-existent users
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function DELETE(_request: NextRequest) {
   try {
     const { profiles } = await getDatabases()
