@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { ObjectId, type UpdateFilter, type Document } from 'mongodb'
 import { authOptions } from '../../../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
+import { createNotification } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,8 +95,33 @@ export async function POST(
       replies: []
     }
 
+    // Get post details for notifications
+    const post = await postsCollection.findOne({ _id: new ObjectId(id) })
+    
+    if (!post) {
+      return NextResponse.json(
+        { error: 'Post not found' },
+        { status: 404 }
+      )
+    }
+
     // If parentId is provided, add as nested reply
     if (parentId) {
+      // Find parent comment to get author email
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const findParentComment = (comments: any[]): any => {
+        for (const c of comments) {
+          if (c._id === parentId) return c
+          if (c.replies?.length > 0) {
+            const found = findParentComment(c.replies)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      
+      const parentComment = findParentComment(post.comments || [])
+      
       // Add reply to parent comment
       const result = await postsCollection.updateOne(
         { 
@@ -113,6 +139,23 @@ export async function POST(
           { status: 404 }
         )
       }
+      
+      // Notify parent comment author about reply
+      if (parentComment?.author?.email && parentComment.author.email !== session.user.email) {
+        await createNotification({
+          type: 'comment_reply',
+          fromUser: {
+            email: session.user.email,
+            name: session.user.name || 'User',
+            username: username,
+            image: userProfile?.image || session.user.image
+          },
+          toUserEmail: parentComment.author.email,
+          postId: id,
+          commentId: parentId,
+          message: `${session.user.name} replied to your comment`
+        })
+      }
     } else {
       // Add as top-level comment
       const result = await postsCollection.updateOne(
@@ -128,6 +171,23 @@ export async function POST(
           { error: 'Post not found' },
           { status: 404 }
         )
+      }
+      
+      // Notify post author about comment
+      if (post.author?.email && post.author.email !== session.user.email) {
+        await createNotification({
+          type: 'comment',
+          fromUser: {
+            email: session.user.email,
+            name: session.user.name || 'User',
+            username: username,
+            image: userProfile?.image || session.user.image
+          },
+          toUserEmail: post.author.email,
+          postId: id,
+          commentId: comment._id,
+          message: `${session.user.name} commented on your post`
+        })
       }
     }
 

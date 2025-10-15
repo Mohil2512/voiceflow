@@ -4,6 +4,7 @@ import { authOptions } from '../../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
 import { uploadImage } from '@/lib/cloudinary'
 import { serverEnv } from '@/lib/env'
+import { createNotification } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -162,6 +163,25 @@ export async function POST(request: NextRequest) {
     const result = await postsCollection.insertOne(newPost)
 
     console.log('Post created successfully:', result.insertedId)
+
+    // Notify followers about new post
+    const followers = Array.isArray(userProfile?.followers) ? userProfile.followers : []
+    if (followers.length > 0) {
+      for (const followerEmail of followers) {
+        await createNotification({
+          type: 'post',
+          fromUser: {
+            email: session.user.email,
+            name: session.user.name,
+            username: username,
+            image: session.user.image
+          },
+          toUserEmail: followerEmail,
+          postId: result.insertedId.toString(),
+          message: `${session.user.name} posted something new`
+        })
+      }
+    }
 
     // Return success response
     return NextResponse.json(

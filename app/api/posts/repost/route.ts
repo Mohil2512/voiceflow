@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
 import { ObjectId } from 'mongodb'
+import { createNotification } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -105,6 +106,22 @@ export async function POST(request: NextRequest) {
         }
 
         await postsCollection.insertOne(repostDocument)
+        
+        // Notify original post author about the repost
+        if (post.author?.email && post.author.email !== userEmail) {
+          await createNotification({
+            type: 'repost',
+            fromUser: {
+              email: userEmail,
+              name: reposterAuthor.name,
+              username: reposterAuthor.username,
+              image: reposterAuthor.image
+            },
+            toUserEmail: post.author.email,
+            postId: postId,
+            message: `${reposterAuthor.name} reposted your post`
+          })
+        }
       }
     } else {
       updatedRepostedBy = updatedRepostedBy.filter(email => email !== userEmail)

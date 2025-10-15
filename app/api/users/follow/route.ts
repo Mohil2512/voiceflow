@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import type { UpdateFilter, Document } from 'mongodb'
 import { authOptions } from '../../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
+import { createNotification } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,6 +73,22 @@ export async function POST(request: NextRequest) {
         { email: targetUserEmail },
         { $addToSet: { followers: currentUserEmail } }
       )
+
+      // Get current user details for notification
+      const currentUser = await usersCollection.findOne({ email: currentUserEmail })
+      
+      // Create notification for the followed user
+      await createNotification({
+        type: 'follow',
+        fromUser: {
+          email: currentUserEmail,
+          name: session.user.name || 'User',
+          username: currentUser?.username,
+          image: session.user.image
+        },
+        toUserEmail: targetUserEmail,
+        message: `${session.user.name} started following you`
+      })
     } else {
       // Remove target from current user's following list
       await usersCollection.updateOne(

@@ -16,10 +16,18 @@ import {
   Sun, 
   Moon,
   PlusSquare,
-  Menu
+  Menu,
+  MoreHorizontal
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CreatePostModal } from "@/components/post/CreatePostModal"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 
 // Separate Theme Toggle Component
 export function ThemeToggle({ mobile = false }: { mobile?: boolean }) {
@@ -166,17 +174,23 @@ export function AppSidebar() {
     },
   ]
 
+  const getCurrentThemeLabel = () => {
+    if (theme === "dark") return "Dark Mode"
+    if (theme === "light") return "Light Mode"
+    return "Theme"
+  }
+
   const moreMenuItems = [
     {
-      title: theme === "dark" ? "Dark Mode" : "Light Mode",
+      title: getCurrentThemeLabel(),
       url: "#",
-      icon: theme === "dark" ? Sun : Moon,
+      icon: theme === "dark" ? Moon : Sun,
       onClick: () => {
         // Toggle between dark and light modes only
         const newTheme = theme === "dark" ? "light" : "dark";
         setTheme(newTheme);
         
-        // Force update the DOM directly for immediate visual feedback - fixed reversed themes
+        // Force update the DOM directly for immediate visual feedback
         if (newTheme === "dark") {
           document.documentElement.classList.add("dark");
           document.documentElement.classList.remove("light");
@@ -186,8 +200,6 @@ export function AppSidebar() {
           document.documentElement.classList.remove("dark");
           document.documentElement.style.colorScheme = "light";
         }
-        
-        console.log("Changed theme to", newTheme, "from", theme);
       },
     },
     ...(session ? [{
@@ -347,6 +359,33 @@ export function AppSidebar() {
             />
           )
         })}
+        
+        {/* More Button with Sheet */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <button className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent">
+              <MoreHorizontal className="h-6 w-6 stroke-1 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">More</span>
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-auto rounded-t-3xl">
+            <SheetHeader className="text-left mb-4">
+              <SheetTitle>Settings</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-2">
+              {moreMenuItems.map((item) => (
+                <button
+                  key={item.title}
+                  onClick={item.onClick}
+                  className="flex items-center gap-4 rounded-xl px-4 py-4 text-left transition-colors w-full hover:bg-accent"
+                >
+                  <item.icon className="h-6 w-6 text-foreground" />
+                  <span className="text-base font-medium text-foreground">{item.title}</span>
+                </button>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </>
   )

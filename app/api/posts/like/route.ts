@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../../auth/[...nextauth]/config'
 import { getDatabases } from '@/lib/database/mongodb'
 import { ObjectId } from 'mongodb'
+import { createNotification } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { profiles } = await getDatabases()
     const postsCollection = profiles.collection('posts')
+    const usersCollection = profiles.collection('users')
 
     const post = await postsCollection.findOne({ _id: postObjectId })
     if (!post) {
@@ -61,6 +63,25 @@ export async function POST(request: NextRequest) {
     if (liked) {
       if (!updatedLikedBy.includes(userEmail)) {
         updatedLikedBy.push(userEmail)
+        
+        // Get current user details for notification
+        const currentUser = await usersCollection.findOne({ email: userEmail })
+        
+        // Notify post author about the like
+        if (post.author?.email && post.author.email !== userEmail) {
+          await createNotification({
+            type: 'like',
+            fromUser: {
+              email: userEmail,
+              name: session.user.name || 'User',
+              username: currentUser?.username,
+              image: session.user.image
+            },
+            toUserEmail: post.author.email,
+            postId: postId,
+            message: `${session.user.name} liked your post`
+          })
+        }
       }
     } else {
       updatedLikedBy = updatedLikedBy.filter(email => email !== userEmail)

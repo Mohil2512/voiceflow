@@ -244,24 +244,24 @@ export default function UserProfilePage({ params }: { params: { username: string
     <Layout>
       <div className="max-w-2xl mx-auto bg-background text-foreground min-h-screen pb-20">
         <div className="relative">
-          <div className="h-32 bg-accent"></div>
+          <div className="h-24 md:h-32 bg-accent"></div>
           
-          <div className="px-6 pb-6">
+          <div className="px-3 md:px-6 pb-6">
             <div className="flex justify-between items-start relative">
-              <Avatar className="w-24 h-24 border-4 border-background rounded-full absolute -top-12">
+              <Avatar className="w-16 h-16 md:w-24 md:h-24 border-2 md:border-4 border-background rounded-full absolute -top-8 md:-top-12">
                 <AvatarImage src={userProfile.avatar ?? undefined} alt={userProfile.name ?? 'Profile avatar'} />
-                <AvatarFallback className="text-2xl">
+                <AvatarFallback className="text-lg md:text-2xl">
                   {userProfile.name ? userProfile.name[0].toUpperCase() : "?"}
                 </AvatarFallback>
               </Avatar>
               
-              <div className="w-24 h-12"></div>
+              <div className="w-16 h-8 md:w-24 md:h-12"></div>
               
-              <div className="mt-4 flex space-x-2">
+              <div className="mt-2 md:mt-4 flex space-x-2">
                 {isSelf ? (
                   <button 
                     onClick={() => router.push('/profile')}
-                    className="px-4 py-1 border border-border rounded-full text-sm font-medium"
+                    className="px-3 md:px-4 py-1 border border-border rounded-full text-xs md:text-sm font-medium"
                   >
                     Edit Profile
                   </button>
@@ -311,7 +311,7 @@ export default function UserProfilePage({ params }: { params: { username: string
                       }
                     }}
                     disabled={followLoading}
-                    className={`px-4 py-1 rounded-full text-sm font-medium ${
+                    className={`px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-medium ${
                       isFollowing 
                         ? 'border border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500 group' 
                         : 'bg-primary text-primary-foreground hover:bg-primary/80'
@@ -320,7 +320,7 @@ export default function UserProfilePage({ params }: { params: { username: string
                     onMouseLeave={handleFollowLeave}
                   >
                     {followLoading 
-                      ? <span className="inline-block h-4 w-4 border-2 border-current rounded-full border-b-transparent animate-spin" /> 
+                      ? <span className="inline-block h-3 w-3 md:h-4 md:w-4 border-2 border-current rounded-full border-b-transparent animate-spin" /> 
                       : isFollowing 
                         ? 'Following' 
                         : 'Follow'}
@@ -331,7 +331,7 @@ export default function UserProfilePage({ params }: { params: { username: string
                       localStorage.setItem('redirectAfterLogin', `/profile/${username}`);
                       router.push('/auth/signin');
                     }}
-                    className="px-4 py-1 bg-primary text-primary-foreground rounded-full text-sm font-medium"
+                    className="px-3 md:px-4 py-1 bg-primary text-primary-foreground rounded-full text-xs md:text-sm font-medium"
                   >
                     Follow
                   </button>
@@ -339,12 +339,12 @@ export default function UserProfilePage({ params }: { params: { username: string
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-4 md:mt-6">
               <div className="flex flex-col">
-                <h1 className="text-xl font-bold">{userProfile.name}</h1>
-                <span className="text-muted-foreground">@{username}</span>
+                <h1 className="text-lg md:text-xl font-bold">{userProfile.name}</h1>
+                <span className="text-sm md:text-base text-muted-foreground">@{username}</span>
                 
-                <div className="flex mt-2 space-x-4 text-sm">
+                <div className="flex mt-2 space-x-4 text-xs md:text-sm">
                   <div>
                     <span className="font-bold">{followStats.following}</span> 
                     <span className="text-muted-foreground ml-1">Following</span>
@@ -357,33 +357,33 @@ export default function UserProfilePage({ params }: { params: { username: string
               </div>
 
               {userProfile.bio && (
-                <p className="mt-4 text-foreground">{userProfile.bio}</p>
+                <p className="mt-3 md:mt-4 text-sm md:text-base text-foreground">{userProfile.bio}</p>
               )}
 
-              <div className="flex flex-wrap gap-4 mt-4 text-muted-foreground text-sm">
+              <div className="flex flex-wrap gap-3 md:gap-4 mt-3 md:mt-4 text-muted-foreground text-xs md:text-sm">
                 {userProfile.location && (
                   <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
+                    <MapPin className="h-3 w-3 md:h-4 md:w-4" />
                     <span>{userProfile.location}</span>
                   </div>
                 )}
                 
                 {userProfile.website && (
                   <div className="flex items-center gap-1">
-                    <LinkIcon className="h-4 w-4" />
-                    <a href={userProfile.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <LinkIcon className="h-3 w-3 md:h-4 md:w-4" />
+                    <a href={userProfile.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px]">
                       {userProfile.website.replace(/(^\w+:|^)\/\//, '')}
                     </a>
                   </div>
                 )}
                 
                 <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-3 w-3 md:h-4 md:w-4" />
                   <span>Joined {new Date(userProfile.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                 </div>
               </div>
 
-              <div className="flex gap-5 mt-4">
+              <div className="flex gap-4 md:gap-5 mt-3 md:mt-4">
                 <button
                   onClick={() => {
                     setFollowModalTab('following')
@@ -407,29 +407,29 @@ export default function UserProfilePage({ params }: { params: { username: string
               </div>
             </div>
             
-            <Tabs defaultValue="posts" className="mt-6">
+            <Tabs defaultValue="posts" className="mt-4 md:mt-6">
               <TabsList className="w-full justify-start border-b border-border rounded-none bg-transparent h-auto p-0">
                 <TabsTrigger 
                   value="posts" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-4"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
                 >
                   Posts
                 </TabsTrigger>
                 <TabsTrigger 
                   value="replies" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-4"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
                 >
                   Replies
                 </TabsTrigger>
                 <TabsTrigger 
                   value="media" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-4"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
                 >
                   Media
                 </TabsTrigger>
                 <TabsTrigger 
                   value="likes" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-4"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
                 >
                   Likes
                 </TabsTrigger>

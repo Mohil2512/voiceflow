@@ -7,29 +7,24 @@ import { InlineLoginPrompt } from "@/components/layout/InlineLoginPrompt";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, MessageCircle, UserPlus, AtSign, Repeat2 } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Repeat2 } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
 interface NotificationItem {
-  id: string;
-  type: 'like' | 'comment' | 'follow' | 'mention' | 'repost';
-  user: {
+  _id: string;
+  type: 'like' | 'comment' | 'follow' | 'post' | 'repost' | 'comment_like' | 'comment_reply';
+  fromUser: {
     name: string;
-    username: string;
-    avatar: string;
-    verified?: boolean;
+    email: string;
+    username?: string;
+    image?: string | null;
   };
-  content?: string;
-  post?: {
-    text: string;
-    image?: string;
-  };
-  timestamp: string;
+  message: string;
+  postId?: string;
+  commentId?: string;
+  createdAt: string;
   read: boolean;
 }
-
-// Mock notification data - in real app, this would come from API
-const mockNotifications: NotificationItem[] = [];
 
 function NotificationIcon({ type }: { type: NotificationItem['type'] }) {
   const iconClass = "h-4 w-4";
@@ -38,45 +33,62 @@ function NotificationIcon({ type }: { type: NotificationItem['type'] }) {
     case 'like':
       return <Heart className={`${iconClass} text-red-500 fill-red-500`} />;
     case 'comment':
+    case 'comment_reply':
       return <MessageCircle className={`${iconClass} text-blue-500`} />;
     case 'follow':
       return <UserPlus className={`${iconClass} text-green-500`} />;
-    case 'mention':
-      return <AtSign className={`${iconClass} text-purple-500`} />;
+    case 'post':
+      return <MessageCircle className={`${iconClass} text-purple-500`} />;
     case 'repost':
       return <Repeat2 className={`${iconClass} text-green-500`} />;
+    case 'comment_like':
+      return <Heart className={`${iconClass} text-red-500 fill-red-500`} />;
     default:
       return null;
   }
 }
 
-function NotificationItem({ notification }: { notification: NotificationItem }) {
-  const getNotificationText = () => {
-    switch (notification.type) {
-      case 'like':
-        return 'liked your post';
-      case 'comment':
-        return 'commented on your post';
-      case 'follow':
-        return 'started following you';
-      case 'mention':
-        return 'mentioned you in a post';
-      case 'repost':
-        return 'reposted your post';
-      default:
-        return '';
+function NotificationItem({ notification, onClick }: { notification: NotificationItem; onClick: (notification: NotificationItem) => void }) {
+  const router = useRouter();
+  
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 7) return date.toLocaleDateString();
+    if (days > 0) return `${days}d`;
+    if (hours > 0) return `${hours}h`;
+    if (minutes > 0) return `${minutes}m`;
+    return 'now';
+  };
+
+  const handleClick = () => {
+    onClick(notification);
+    // Navigate to post if postId exists
+    if (notification.postId) {
+      router.push(`/?postId=${notification.postId}`);
+    } else if (notification.type === 'follow' && notification.fromUser.username) {
+      router.push(`/profile/${notification.fromUser.username}`);
     }
   };
 
   return (
-    <div className={`p-4 border-b border-gray-800 hover:bg-gray-900/50 transition-colors ${!notification.read ? 'bg-gray-900/30' : ''}`}>
+    <div 
+      onClick={handleClick}
+      className={`p-4 border-b border-gray-800 hover:bg-gray-900/50 transition-colors cursor-pointer ${!notification.read ? 'bg-gray-900/30' : ''}`}
+    >
       <div className="flex items-start space-x-3">
         {/* Avatar with notification icon */}
         <div className="relative">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={notification.user.avatar} alt={notification.user.name} />
+            <AvatarImage src={notification.fromUser.image || ''} alt={notification.fromUser.name} />
             <AvatarFallback className="bg-gray-700 text-gray-300">
-              {notification.user.name.charAt(0).toUpperCase()}
+              {notification.fromUser.name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="absolute -bottom-1 -right-1 bg-black border border-gray-700 rounded-full p-1">
@@ -86,52 +98,31 @@ function NotificationItem({ notification }: { notification: NotificationItem }) 
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-1">
-            <span className="font-semibold text-white hover:underline cursor-pointer">
-              {notification.user.name}
+          <div className="flex items-center space-x-1 flex-wrap">
+            <span className="font-semibold text-white hover:underline">
+              {notification.fromUser.name}
             </span>
-            {notification.user.verified && (
-              <Badge variant="secondary" className="h-4 w-4 p-0 bg-blue-500">
-                <span className="text-xs text-white">✓</span>
-              </Badge>
+            {notification.fromUser.username && (
+              <span className="text-gray-400 text-sm">@{notification.fromUser.username}</span>
             )}
-            <span className="text-gray-400 text-sm">@{notification.user.username}</span>
             <span className="text-gray-500">·</span>
-            <span className="text-gray-500 text-sm">{notification.timestamp}</span>
+            <span className="text-gray-500 text-sm">{formatTimestamp(notification.createdAt)}</span>
           </div>
           
           <p className="text-gray-300 text-sm mt-1">
-            {getNotificationText()}
+            {notification.message}
           </p>
-
-          {/* Show comment content if it's a comment */}
-          {notification.type === 'comment' && notification.content && (
-            <p className="text-gray-400 text-sm mt-2 italic">
-              &ldquo;{notification.content}&rdquo;
-            </p>
-          )}
-
-          {/* Show mention content if it's a mention */}
-          {notification.type === 'mention' && notification.content && (
-            <p className="text-gray-400 text-sm mt-2 italic">
-              &ldquo;{notification.content}&rdquo;
-            </p>
-          )}
-
-          {/* Show related post if available */}
-          {notification.post && (
-            <div className="mt-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-              <p className="text-gray-300 text-sm line-clamp-2">
-                {notification.post.text}
-              </p>
-            </div>
-          )}
 
           {/* Follow button for follow notifications */}
           {notification.type === 'follow' && (
-            <div className="mt-3">
-              <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-800">
-                Follow Back
+            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-transparent border-gray-600 text-white hover:bg-gray-800"
+                onClick={() => router.push(`/profile/${notification.fromUser.username}`)}
+              >
+                View Profile
               </Button>
             </div>
           )}
@@ -139,7 +130,7 @@ function NotificationItem({ notification }: { notification: NotificationItem }) 
 
         {/* Unread indicator */}
         {!notification.read && (
-          <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
+          <div className="h-2 w-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
         )}
       </div>
     </div>
@@ -149,16 +140,58 @@ function NotificationItem({ notification }: { notification: NotificationItem }) 
 export default function ActivityPage() {
   const { status } = useSession()
   const [mounted, setMounted] = useState(false)
-  const unreadCount = mockNotifications.filter(n => !n.read).length;
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchNotifications()
+    }
+  }, [status])
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/notifications')
+      if (response.ok) {
+        const data = await response.json()
+        setNotifications(data.notifications || [])
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const markAsRead = async (notification: NotificationItem) => {
+    if (notification.read) return
+    
+    try {
+      await fetch('/api/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationIds: [notification._id] })
+      })
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => n._id === notification._id ? { ...n, read: true } : n)
+      )
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
   if (!mounted) return null
 
   // Show loading state
-  if (status === 'loading') {
+  if (status === 'loading' || loading) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-background">
@@ -182,7 +215,7 @@ export default function ActivityPage() {
         {/* Header */}
         <div className="sticky top-0 bg-background/95 backdrop-blur-md border-b border-border p-4 z-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground">Activity</h1>
+            <h1 className="text-xl font-bold text-foreground">Notifications</h1>
             {unreadCount > 0 && (
               <Badge variant="secondary" className="bg-primary text-primary-foreground">
                 {unreadCount} new
@@ -191,76 +224,28 @@ export default function ActivityPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="w-full bg-transparent border-b border-gray-800 rounded-none h-12 p-0">
-            <TabsTrigger 
-              value="all" 
-              className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:text-white text-gray-400 rounded-none h-full"
-            >
-              All
-            </TabsTrigger>
-            <TabsTrigger 
-              value="mentions" 
-              className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:text-white text-gray-400 rounded-none h-full"
-            >
-              Mentions
-            </TabsTrigger>
-            <TabsTrigger 
-              value="requests" 
-              className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:text-white text-gray-400 rounded-none h-full"
-            >
-              Requests
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="mt-0">
-            {mockNotifications.length > 0 ? (
-              <div className="divide-y divide-gray-800">
-                {mockNotifications.map((notification) => (
-                  <NotificationItem key={notification.id} notification={notification} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20">
-                <Heart className="h-16 w-16 text-gray-600 mb-4" />
-                <h2 className="text-xl font-semibold text-gray-300 mb-2">No activity yet</h2>
-                <p className="text-gray-500 text-center">
-                  When people interact with your posts, you&rsquo;ll see it here.
-                </p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="mentions" className="mt-0">
+        {/* Notifications List */}
+        <div className="mt-0">
+          {notifications.length > 0 ? (
             <div className="divide-y divide-gray-800">
-              {mockNotifications
-                .filter(n => n.type === 'mention')
-                .map((notification) => (
-                  <NotificationItem key={notification.id} notification={notification} />
-                ))}
-              {mockNotifications.filter(n => n.type === 'mention').length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <AtSign className="h-16 w-16 text-gray-600 mb-4" />
-                  <h2 className="text-xl font-semibold text-gray-300 mb-2">No mentions yet</h2>
-                  <p className="text-gray-500 text-center">
-                    When someone mentions you, you&rsquo;ll see it here.
-                  </p>
-                </div>
-              )}
+              {notifications.map((notification) => (
+                <NotificationItem 
+                  key={notification._id} 
+                  notification={notification}
+                  onClick={markAsRead}
+                />
+              ))}
             </div>
-          </TabsContent>
-
-          <TabsContent value="requests" className="mt-0">
+          ) : (
             <div className="flex flex-col items-center justify-center py-20">
-              <UserPlus className="h-16 w-16 text-gray-600 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-300 mb-2">No follow requests</h2>
+              <Heart className="h-16 w-16 text-gray-600 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-300 mb-2">No notifications yet</h2>
               <p className="text-gray-500 text-center">
-                Follow requests will appear here.
+                When people interact with your posts or follow you, you&rsquo;ll see it here.
               </p>
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </Layout>
   );
