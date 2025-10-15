@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useState, useEffect, useCallback, memo } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -34,11 +34,14 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
   const { data: session } = useSession()
   const { toast } = useToast()
   const [comments, setComments] = useState<Comment[]>([])
-  const [newComment, setNewComment] = useState("")
+  const [mainComment, setMainComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyContent, setReplyContent] = useState<Record<string, string>>({})
+  const [activeReplyId, setActiveReplyId] = useState<string | null>(null)
+  const [replyTexts, setReplyTexts] = useState<{ [key: string]: string }>({})
+  
+  const mainTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const replyTextareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({})
 
   const fetchComments = async () => {
     setIsLoading(true)
@@ -58,11 +61,13 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
   useEffect(() => {
     if (isOpen) {
       fetchComments()
+      setMainComment("")
+      setReplyTexts({})
+      setActiveReplyId(null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, postId])
 
-  const handleSubmitComment = async () => {
+  const handleMainCommentSubmit = async () => {
     if (!session) {
       toast({
         title: "Authentication required",
@@ -72,7 +77,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
       return
     }
 
-    if (!newComment.trim()) {
+    if (!mainComment.trim()) {
       toast({
         title: "Empty comment",
         description: "Please write something before posting",
@@ -89,14 +94,14 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: newComment.trim(),
+          content: mainComment.trim(),
         }),
       })
 
       if (response.ok) {
-        setNewComment("")
+        setMainComment("")
         await fetchComments()
-        onCommentAdded?.() // Notify parent to update comment count
+        onCommentAdded?.()
         toast({
           title: "Success",
           description: "Comment posted successfully",
@@ -117,7 +122,7 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
     }
   }
 
-  const handleSubmitReply = async (parentCommentId: string) => {
+  const handleReplySubmit = async (commentId: string) => {
     if (!session) {
       toast({
         title: "Authentication required",
@@ -127,8 +132,8 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
       return
     }
 
-    const content = replyContent[parentCommentId] || ""
-    if (!content.trim()) {
+    const replyText = replyTexts[commentId] || ""
+    if (!replyText.trim()) {
       toast({
         title: "Empty reply",
         description: "Please write something before posting",
@@ -145,16 +150,20 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: content.trim(),
-          parentId: parentCommentId,
+          content: replyText.trim(),
+          parentId: commentId,
         }),
       })
 
       if (response.ok) {
-        setReplyContent(prev => ({ ...prev, [parentCommentId]: "" }))
-        setReplyingTo(null)
+        setReplyTexts(prev => {
+          const updated = { ...prev }
+          delete updated[commentId]
+          return updated
+        })
+        setActiveReplyId(null)
         await fetchComments()
-        onCommentAdded?.() // Notify parent to update comment count
+        onCommentAdded?.()
         toast({
           title: "Success",
           description: "Reply posted successfully",
@@ -175,10 +184,6 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
     }
   }
 
-  const handleReplyContentChange = useCallback((commentId: string, value: string) => {
-    setReplyContent(prev => ({ ...prev, [commentId]: value }))
-  }, [])
-
   const handleLikeComment = async (commentId: string) => {
     if (!session) {
       toast({
@@ -195,7 +200,6 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
       })
 
       if (response.ok) {
-        // Refresh comments to show updated like count
         fetchComments()
       }
     } catch (error) {
@@ -208,9 +212,16 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
     }
   }
 
-  const CommentItem = memo(function CommentItem({ comment, depth = 0 }: { comment: Comment; depth?: number }) {
+  const updateReplyText = (commentId: string, value: string) => {
+    setReplyTexts(prev => ({
+      ...prev,
+      [commentId]: value
+    }))
+  }
+
+  const CommentItem = ({ comment, depth = 0 }: { comment: Comment; depth?: number }) => {
     const [showReplies, setShowReplies] = useState(true)
-    const isReplying = replyingTo === comment._id
+    const isReplyActive = activeReplyId === comment._id
     const hasReplies = comment.replies && comment.replies.length > 0
 
     return (
@@ -251,11 +262,18 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
                 size="sm"
                 className="h-auto p-0 text-[10px] md:text-xs text-muted-foreground hover:text-primary"
                 onClick={() => {
-                  if (isReplying) {
-                    setReplyingTo(null)
-                    setReplyContent(prev => ({ ...prev, [comment._id]: "" }))
+                  if (isReplyActive) {
+                    setActiveReplyId(null)
+                    setReplyTexts(prev => {
+                      const updated = { ...prev }
+                      delete updated[comment._id]
+                      return updated
+                    })
                   } else {
-                    setReplyingTo(comment._id)
+                    setActiveReplyId(comment._id)
+                    setTimeout(() => {
+                      replyTextareaRefs.current[comment._id]?.focus()
+                    }, 100)
                   }
                 }}
               >
@@ -275,16 +293,15 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
               )}
             </div>
             
-            {/* Reply input */}
-            {isReplying && (
+            {isReplyActive && (
               <div className="mt-2 md:mt-3 space-y-1.5 md:space-y-2">
                 <textarea
-                  value={replyContent[comment._id] || ""}
-                  onChange={(e) => handleReplyContentChange(comment._id, e.target.value)}
+                  ref={(el) => { replyTextareaRefs.current[comment._id] = el }}
+                  value={replyTexts[comment._id] || ""}
+                  onChange={(e) => updateReplyText(comment._id, e.target.value)}
                   placeholder="Write your reply..."
                   className="w-full min-h-[50px] md:min-h-[80px] px-3 py-2 text-xs md:text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                   disabled={isSubmitting}
-                  autoFocus
                 />
                 <div className="flex justify-end space-x-1.5 md:space-x-2">
                   <Button
@@ -292,8 +309,12 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
                     size="sm"
                     className="h-7 md:h-8 text-[10px] md:text-xs"
                     onClick={() => {
-                      setReplyingTo(null)
-                      setReplyContent(prev => ({ ...prev, [comment._id]: "" }))
+                      setActiveReplyId(null)
+                      setReplyTexts(prev => {
+                        const updated = { ...prev }
+                        delete updated[comment._id]
+                        return updated
+                      })
                     }}
                     disabled={isSubmitting}
                   >
@@ -302,8 +323,8 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
                   <Button
                     size="sm"
                     className="h-7 md:h-8 text-[10px] md:text-xs"
-                    onClick={() => handleSubmitReply(comment._id)}
-                    disabled={isSubmitting || !(replyContent[comment._id] || "").trim()}
+                    onClick={() => handleReplySubmit(comment._id)}
+                    disabled={isSubmitting || !(replyTexts[comment._id] || "").trim()}
                   >
                     {isSubmitting ? (
                       <>
@@ -321,7 +342,6 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
               </div>
             )}
             
-            {/* Nested replies */}
             {hasReplies && showReplies && (
               <div className="mt-1.5 md:mt-2">
                 {comment.replies!.map((reply) => (
@@ -333,14 +353,13 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
         </div>
       </div>
     )
-  })
+  }
 
   if (!isOpen) return null
 
   return (
     <div className="border-t border-border bg-muted/30">
       <div className="p-3 md:p-4 max-h-[600px] overflow-y-auto">
-        {/* New Comment Input - Mobile Optimized */}
         {session && (
           <div className="mb-4 md:mb-6">
             <div className="flex space-x-2 md:space-x-3">
@@ -353,16 +372,17 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
               
               <div className="flex-1 space-y-2">
                 <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  ref={mainTextareaRef}
+                  value={mainComment}
+                  onChange={(e) => setMainComment(e.target.value)}
                   placeholder="Add a comment..."
                   className="w-full min-h-[60px] md:min-h-[80px] px-3 py-2 text-sm md:text-base rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                   disabled={isSubmitting}
                 />
                 <div className="flex justify-end">
                   <Button
-                    onClick={handleSubmitComment}
-                    disabled={isSubmitting || !newComment.trim()}
+                    onClick={handleMainCommentSubmit}
+                    disabled={isSubmitting || !mainComment.trim()}
                     size="sm"
                     className="h-8 md:h-9 text-xs md:text-sm"
                   >
@@ -384,7 +404,6 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
           </div>
         )}
 
-        {/* Comments List */}
         <div className="space-y-1">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
