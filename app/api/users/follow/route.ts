@@ -21,6 +21,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { targetUsername, action } = body
 
+    console.log('[Follow API] Request:', { targetUsername, action, currentUser: session.user.email })
+
     if (!targetUsername || !action) {
       return NextResponse.json(
         { error: 'Target username and action are required' },
@@ -38,14 +40,16 @@ export async function POST(request: NextRequest) {
     const { profiles } = await getDatabases()
     const usersCollection = profiles.collection('users')
 
-    // Find the target user by username
+    // Find the target user by username (case-insensitive)
     const targetUser = await usersCollection.findOne({
-      username: { $regex: new RegExp(`^${targetUsername}$`, 'i') }
+      username: { $regex: new RegExp(`^${targetUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
     })
+
+    console.log('[Follow API] Target user found:', targetUser ? { email: targetUser.email, username: targetUser.username } : 'NOT FOUND')
 
     if (!targetUser) {
       return NextResponse.json(
-        { error: 'Target user not found' },
+        { error: `Target user @${targetUsername} not found` },
         { status: 404 }
       )
     }

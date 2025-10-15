@@ -280,14 +280,13 @@ export function CommentSection({ postId, isOpen, onClose, onCommentAdded }: Comm
             {isReplying && (
               <div className="mt-2 md:mt-3 space-y-1.5 md:space-y-2">
                 <Textarea
+                  key={`reply-${comment._id}`}
                   value={replyContent[comment._id] || ""}
                   onChange={(e) => handleReplyContentChange(comment._id, e.target.value)}
                   placeholder="Write your reply..."
                   className="min-h-[50px] md:min-h-[80px] resize-none text-xs md:text-sm"
                   disabled={isSubmitting}
                   autoFocus
-                  dir="ltr"
-                  style={{ direction: 'ltr', textAlign: 'left' }}
                 />
                 <div className="flex justify-end space-x-1.5 md:space-x-2">
                   <Button

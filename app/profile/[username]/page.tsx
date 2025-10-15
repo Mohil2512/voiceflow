@@ -272,6 +272,7 @@ export default function UserProfilePage({ params }: { params: { username: string
                       setFollowLoading(true)
                       
                       try {
+                        console.log('[Follow Button] Sending request for username:', username)
                         const response = await fetch('/api/users/follow', {
                           method: 'POST',
                           headers: {
@@ -303,9 +304,15 @@ export default function UserProfilePage({ params }: { params: { username: string
                               followers: nextFollowing ? prev.followers + 1 : Math.max(prev.followers - 1, 0)
                             }))
                           }
+                          console.log('[Follow Button] Success:', { isFollowing: nextFollowing })
+                        } else {
+                          const errorData = await response.json()
+                          console.error('[Follow Button] Error response:', errorData)
+                          alert(`Failed to ${isFollowing ? 'unfollow' : 'follow'}: ${errorData.error || 'Unknown error'}`)
                         }
                       } catch (error) {
-                        console.error('Error updating follow status:', error)
+                        console.error('[Follow Button] Exception:', error)
+                        alert(`Error: ${error instanceof Error ? error.message : 'Failed to update follow status'}`)
                       } finally {
                         setFollowLoading(false)
                       }
