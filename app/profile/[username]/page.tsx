@@ -272,7 +272,7 @@ export default function UserProfilePage({ params }: { params: { username: string
 
                       <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs md:text-sm">
                         <div className="text-center">
-                          <span className="block font-semibold">{userPosts.length}</span>
+                          <span className="block font-semibold">{userPosts?.length || 0}</span>
                           <span className="text-muted-foreground">Posts</span>
                         </div>
                         <button

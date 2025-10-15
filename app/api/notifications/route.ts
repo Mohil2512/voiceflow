@@ -63,7 +63,7 @@ export async function GET() {
       .toArray();
     
     // Get profile information for notification originators
-    const enhancedNotifications = await Promise.all(notifications.map(async (notification) => {
+    const enhancedNotifications: NotificationWithUser[] = await Promise.all(notifications.map(async (notification) => {
       // Get more profile information for the sender if available
       if (notification.fromUser?.email) {
         const senderProfile = await profilesCollection.findOne({ email: notification.fromUser.email });
@@ -74,7 +74,7 @@ export async function GET() {
               ...notification.fromUser,
               username: senderProfile.username || notification.fromUser.email.split('@')[0],
             }
-          };
+          } as NotificationWithUser;
         }
       }
       return {
@@ -83,10 +83,10 @@ export async function GET() {
           ...notification.fromUser,
           username: notification.fromUser?.email?.split('@')[0] || 'user'
         }
-      };
+      } as NotificationWithUser;
     }));
 
-    const normalizedNotifications = enhancedNotifications.map((notification: NotificationWithUser) => ({
+    const normalizedNotifications = enhancedNotifications.map((notification) => ({
       ...notification,
       _id: notification._id instanceof ObjectId ? notification._id.toString() : String(notification._id ?? ''),
       createdAt: notification.createdAt instanceof Date ? notification.createdAt.toISOString() : notification.createdAt,

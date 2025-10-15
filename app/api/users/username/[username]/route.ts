@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDatabases } from '@/lib/database/mongodb'
+import { ObjectId } from 'mongodb'
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -184,7 +185,7 @@ export async function GET(
           })
         } else {
           userRecord = {
-            _id: normalizedUsername,
+            _id: new ObjectId(),
             name: typeof authorRecord.name === 'string' ? authorRecord.name : normalizedUsername,
             username: typeof authorRecord.username === 'string' && authorRecord.username.trim().length > 0
               ? authorRecord.username
