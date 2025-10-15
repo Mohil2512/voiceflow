@@ -3,8 +3,9 @@
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { AppSidebar } from "./AppSidebar"
-import { ThemeToggle } from "./AppSidebar"
+import { NotificationLink } from "./NotificationLink"
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -13,6 +14,8 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { status } = useSession()
   const [mounted, setMounted] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     setMounted(true)
@@ -35,7 +38,10 @@ export function Layout({ children }: LayoutProps) {
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
       {/* Desktop Sidebar - Hidden on mobile */}
       <div className="hidden md:flex flex-shrink-0">
-        <AppSidebar />
+        <AppSidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((previous) => !previous)}
+        />
       </div>
       
       {/* Mobile Header - Visible only on mobile */}
@@ -57,8 +63,8 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
           
-          {/* Mobile Theme Toggle */}
-          <ThemeToggle mobile={true} />
+          {/* Mobile Notifications */}
+          <NotificationLink isActive={pathname === '/notification'} variant="compact" />
         </div>
       </div>
       

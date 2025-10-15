@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
 
     // Connect to database
     const client = await clientPromise
-    const db = client.db('voiceflow_auth')
-    const users = db.collection('users')
+  const authDb = client.db('voiceflow_auth')
+  const users = authDb.collection('users')
 
     // Check if user already exists
     const existingUser = await users.findOne({
@@ -73,6 +73,35 @@ export async function POST(request: NextRequest) {
 
     // Insert user
     const result = await users.insertOne(newUser)
+
+    try {
+      const profilesDb = client.db('voiceflow_profiles')
+      const profilesUsers = profilesDb.collection('users')
+      const now = new Date()
+
+      await profilesUsers.updateOne(
+        { email: newUser.email },
+        {
+          $setOnInsert: {
+            email: newUser.email,
+            followers: [],
+            following: [],
+            createdAt: now
+          },
+          $set: {
+            name: newUser.name,
+            username: newUser.username,
+            bio: newUser.bio,
+            image: newUser.image,
+            avatar: newUser.avatar,
+            updatedAt: now
+          }
+        },
+        { upsert: true }
+      )
+    } catch (profileError) {
+      console.error('Failed to create profile record:', profileError)
+    }
 
     return NextResponse.json(
       { 

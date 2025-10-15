@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
+import { ObjectId } from 'mongodb'
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic'
@@ -35,7 +36,7 @@ export async function GET() {
     // Get databases
     const databases = await getDatabases();
     const notificationsCollection = databases.activities.collection('notifications');
-    const profilesCollection = databases.profiles.collection('profiles');
+    const profilesCollection = databases.profiles.collection('users');
     
     // Get notifications for the current user
     const notifications = await notificationsCollection
@@ -69,8 +70,15 @@ export async function GET() {
         }
       };
     }));
+
+    const normalizedNotifications = enhancedNotifications.map((notification) => ({
+      ...notification,
+      _id: notification._id instanceof ObjectId ? notification._id.toString() : String(notification._id ?? ''),
+      createdAt: notification.createdAt instanceof Date ? notification.createdAt.toISOString() : notification.createdAt,
+      read: Boolean(notification.read)
+    }));
     
-    return NextResponse.json({ notifications: enhancedNotifications });
+    return NextResponse.json({ notifications: normalizedNotifications });
   } catch (error) {
     console.error("Error fetching notifications:", error);
     return NextResponse.json(
@@ -146,26 +154,43 @@ export async function PUT(request: Request) {
       );
     }
     
-    const { notificationIds } = await request.json();
-    
-    if (!notificationIds || !Array.isArray(notificationIds)) {
+    const { notificationIds, markAll } = await request.json();
+    const databases = await getDatabases();
+    const notificationsCollection = databases.activities.collection('notifications');
+
+    // Mark every notification as read for current user
+    if (markAll) {
+      await notificationsCollection.updateMany(
+        { userEmail: session.user.email, read: { $ne: true } },
+        { $set: { read: true, updatedAt: new Date() } }
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
       return NextResponse.json(
         { error: "Invalid notification IDs" },
         { status: 400 }
       );
     }
-    
-    // Get databases
-    const databases = await getDatabases();
-    const notificationsCollection = databases.activities.collection('notifications');
-    
-    // Mark notifications as read
+
+    const objectIds = notificationIds
+      .filter((id: unknown): id is string => typeof id === 'string' && ObjectId.isValid(id))
+      .map((id: string) => new ObjectId(id));
+
+    if (objectIds.length === 0) {
+      return NextResponse.json(
+        { error: "Invalid notification IDs" },
+        { status: 400 }
+      );
+    }
+  // Mark notifications as read
     await notificationsCollection.updateMany(
       { 
-        _id: { $in: notificationIds },
+        _id: { $in: objectIds },
         userEmail: session.user.email // Only update user's own notifications
       },
-      { $set: { read: true } }
+      { $set: { read: true, updatedAt: new Date() } }
     );
     
     return NextResponse.json({ success: true });
@@ -173,6 +198,59 @@ export async function PUT(request: Request) {
     console.error("Error marking notifications as read:", error);
     return NextResponse.json(
       { error: "Failed to update notifications" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    let body: unknown = null;
+    try {
+      body = await request.json();
+    } catch {
+      body = null;
+    }
+
+    const rawIds = Array.isArray((body as { notificationIds?: unknown })?.notificationIds)
+      ? (body as { notificationIds: unknown[] }).notificationIds
+      : (body as { notificationId?: unknown })?.notificationId
+        ? [(body as { notificationId: unknown }).notificationId]
+        : [];
+
+    const objectIds = rawIds
+      .filter((id): id is string => typeof id === 'string' && ObjectId.isValid(id))
+      .map((id) => new ObjectId(id));
+
+    if (objectIds.length === 0) {
+      return NextResponse.json(
+        { error: "Invalid notification IDs" },
+        { status: 400 }
+      );
+    }
+
+    const databases = await getDatabases();
+    const notificationsCollection = databases.activities.collection('notifications');
+
+    const result = await notificationsCollection.deleteMany({
+      _id: { $in: objectIds },
+      userEmail: session.user.email
+    });
+
+    return NextResponse.json({ success: true, deletedCount: result.deletedCount });
+  } catch (error) {
+    console.error("Error deleting notifications:", error);
+    return NextResponse.json(
+      { error: "Failed to delete notifications" },
       { status: 500 }
     );
   }

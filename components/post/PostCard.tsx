@@ -50,6 +50,7 @@ interface PostCardProps {
   originalPostId?: string | null
   isRepostEntry?: boolean
   onPostUpdate?: () => void  // Callback for when post is updated/deleted
+  forceThreadView?: boolean
 }
 
 export function PostCard({
@@ -70,6 +71,7 @@ export function PostCard({
   originalPostId,
   isRepostEntry = false,
   onPostUpdate,
+  forceThreadView = false,
 }: PostCardProps) {
   const { data: session } = useSession()
   const router = useRouter()
@@ -83,7 +85,7 @@ export function PostCard({
   const [isDeleting, setIsDeleting] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const [showComments, setShowComments] = useState(false)
+  const [showComments, setShowComments] = useState(forceThreadView)
   const [commentCount, setCommentCount] = useState(0)
 
   useEffect(() => {
@@ -101,6 +103,12 @@ export function PostCard({
   useEffect(() => {
     setRepostsCount(reposts)
   }, [reposts])
+
+  useEffect(() => {
+    if (forceThreadView) {
+      setShowComments(true)
+    }
+  }, [forceThreadView])
 
   // Fetch comment count when post ID changes
   useEffect(() => {
@@ -305,7 +313,18 @@ export function PostCard({
 
   const handleReply = () => {
     requireAuth(() => {
-      setShowComments(!showComments)
+      if (forceThreadView) {
+        const anchorId = id ? `comments-${id}` : undefined
+        if (anchorId) {
+          const threadElement = document.getElementById(anchorId)
+          if (threadElement) {
+            threadElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }
+        return
+      }
+
+      setShowComments(true)
     })
   }
 
@@ -334,6 +353,20 @@ export function PostCard({
   const reposterLabel = repostContext?.username
     ? `@${repostContext.username}`
     : repostContext?.name || null
+
+  const postSummary = {
+    authorName: displayName,
+    authorUsername: displayUsername,
+    authorAvatar: user?.avatar || user?.image || '',
+    timestamp,
+    content,
+    images: displayImages,
+    metrics: {
+      likes: likesCount,
+      comments: commentCount,
+      reposts: repostsCount,
+    },
+  }
 
   return (
     <div className="border-b border-border p-3 md:p-4 hover:bg-accent/30 transition-colors">
@@ -528,28 +561,35 @@ export function PostCard({
 
       {/* Comment Section */}
       {id && (
-        <CommentSection
-          postId={id}
-          isOpen={showComments}
-          onClose={() => setShowComments(false)}
-          onCommentAdded={() => {
-            // Refetch comment count when a new comment is added
-            if (!id) return
-            fetch(`/api/posts/${id}/comments`)
-              .then(res => res.json())
-              .then(data => {
-                const comments: CommentWithReplies[] = data.comments || []
-                const countAllComments = (commentsList: CommentWithReplies[]): number => {
-                  return commentsList.reduce((total, comment) => {
-                    const replyCount = comment.replies ? countAllComments(comment.replies) : 0
-                    return total + 1 + replyCount
-                  }, 0)
-                }
-                setCommentCount(countAllComments(comments))
-              })
-              .catch(err => console.error('Error updating comment count:', err))
-          }}
-        />
+        <div id={forceThreadView ? `comments-${id}` : undefined} className={forceThreadView ? 'mt-6' : undefined}>
+          <CommentSection
+            postId={id}
+            postSummary={postSummary}
+            mode={forceThreadView ? 'page' : 'dialog'}
+            isOpen={forceThreadView ? true : showComments}
+            onClose={forceThreadView ? undefined : () => setShowComments(false)}
+            onRequestThreadView={forceThreadView ? undefined : () => {
+              if (!id) return
+              router.push(`/posts/${id}`)
+            }}
+            onCommentAdded={() => {
+              if (!id) return
+              fetch(`/api/posts/${id}/comments`)
+                .then(res => res.json())
+                .then(data => {
+                  const comments: CommentWithReplies[] = data.comments || []
+                  const countAllComments = (commentsList: CommentWithReplies[]): number => {
+                    return commentsList.reduce((total, comment) => {
+                      const replyCount = comment.replies ? countAllComments(comment.replies) : 0
+                      return total + 1 + replyCount
+                    }, 0)
+                  }
+                  setCommentCount(countAllComments(comments))
+                })
+                .catch(err => console.error('Error updating comment count:', err))
+            }}
+          />
+        </div>
       )}
     </div>
   )

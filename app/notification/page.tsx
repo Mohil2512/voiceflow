@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type MouseEvent as ReactMouseEvent } from 'react'
 import { useSession } from 'next-auth/react'
 import { Layout } from "@/components/layout/Layout";
 import { InlineLoginPrompt } from "@/components/layout/InlineLoginPrompt";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MessageCircle, UserPlus, Repeat2 } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Repeat2, Trash2, CheckCheck, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
-interface NotificationItem {
+interface NotificationData {
   _id: string;
   type: 'like' | 'comment' | 'follow' | 'post' | 'repost' | 'comment_like' | 'comment_reply';
   fromUser: {
@@ -26,7 +26,7 @@ interface NotificationItem {
   read: boolean;
 }
 
-function NotificationIcon({ type }: { type: NotificationItem['type'] }) {
+function NotificationIcon({ type }: { type: NotificationData['type'] }) {
   const iconClass = "h-4 w-4";
   
   switch (type) {
@@ -48,9 +48,19 @@ function NotificationIcon({ type }: { type: NotificationItem['type'] }) {
   }
 }
 
-function NotificationItem({ notification, onClick }: { notification: NotificationItem; onClick: (notification: NotificationItem) => void }) {
+function NotificationRow({
+  notification,
+  onOpen,
+  onDelete,
+  isDeleting
+}: {
+  notification: NotificationData;
+  onOpen: (notification: NotificationData) => Promise<void> | void;
+  onDelete: (id: string) => void;
+  isDeleting: boolean;
+}) {
   const router = useRouter();
-  
+
   const formatTimestamp = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -60,6 +70,7 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
+    if (Number.isNaN(diff)) return '';
     if (days > 7) return date.toLocaleDateString();
     if (days > 0) return `${days}d`;
     if (hours > 0) return `${hours}h`;
@@ -67,9 +78,13 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
     return 'now';
   };
 
-  const handleClick = () => {
-    onClick(notification);
-    // Navigate to post if postId exists
+  const handleClick = async () => {
+    try {
+      await onOpen(notification);
+    } catch (error) {
+      console.error('Failed to handle notification open:', error);
+    }
+
     if (notification.postId) {
       router.push(`/?postId=${notification.postId}`);
     } else if (notification.type === 'follow' && notification.fromUser.username) {
@@ -77,13 +92,17 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
     }
   };
 
+  const handleDelete = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onDelete(notification._id);
+  };
+
   return (
-    <div 
+    <div
       onClick={handleClick}
       className={`p-4 border-b border-gray-800 hover:bg-gray-900/50 transition-colors cursor-pointer ${!notification.read ? 'bg-gray-900/30' : ''}`}
     >
       <div className="flex items-start space-x-3">
-        {/* Avatar with notification icon */}
         <div className="relative">
           <Avatar className="h-10 w-10">
             <AvatarImage src={notification.fromUser.image || ''} alt={notification.fromUser.name} />
@@ -96,7 +115,6 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-1 flex-wrap">
             <span className="font-semibold text-white hover:underline">
@@ -108,17 +126,16 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
             <span className="text-gray-500">·</span>
             <span className="text-gray-500 text-sm">{formatTimestamp(notification.createdAt)}</span>
           </div>
-          
+
           <p className="text-gray-300 text-sm mt-1">
             {notification.message}
           </p>
 
-          {/* Follow button for follow notifications */}
           {notification.type === 'follow' && (
-            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-              <Button 
-                variant="outline" 
-                size="sm" 
+            <div className="mt-3" onClick={(event) => event.stopPropagation()}>
+              <Button
+                variant="outline"
+                size="sm"
                 className="bg-transparent border-gray-600 text-white hover:bg-gray-800"
                 onClick={() => router.push(`/profile/${notification.fromUser.username}`)}
               >
@@ -128,10 +145,22 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
           )}
         </div>
 
-        {/* Unread indicator */}
-        {!notification.read && (
-          <div className="h-2 w-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-        )}
+        <div className="flex flex-col items-end gap-2 flex-shrink-0 py-1">
+          {!notification.read ? (
+            <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+          ) : (
+            <div className="h-2 w-2"></div>
+          )}
+          <button
+            onClick={handleDelete}
+            className="p-1 text-gray-500 hover:text-red-500 transition-colors"
+            aria-label="Delete notification"
+            type="button"
+            disabled={isDeleting}
+          >
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -140,8 +169,10 @@ function NotificationItem({ notification, onClick }: { notification: Notificatio
 export default function ActivityPage() {
   const { status } = useSession()
   const [mounted, setMounted] = useState(false)
-  const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [notifications, setNotifications] = useState<NotificationData[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [markingAll, setMarkingAll] = useState(false)
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
@@ -160,7 +191,19 @@ export default function ActivityPage() {
       const response = await fetch('/api/notifications')
       if (response.ok) {
         const data = await response.json()
-        setNotifications(data.notifications || [])
+        if (Array.isArray(data.notifications)) {
+          const mapped = (data.notifications as NotificationData[]).map((notification) => ({
+            ...notification,
+            _id: typeof notification._id === 'string' ? notification._id : String((notification as { _id?: unknown })._id ?? ''),
+            read: Boolean(notification.read),
+            createdAt: typeof notification.createdAt === 'string'
+              ? notification.createdAt
+              : new Date(notification.createdAt).toISOString()
+          }))
+          setNotifications(mapped)
+        } else {
+          setNotifications([])
+        }
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
@@ -169,15 +212,18 @@ export default function ActivityPage() {
     }
   }
 
-  const markAsRead = async (notification: NotificationItem) => {
+  const markAsRead = async (notification: NotificationData) => {
     if (notification.read) return
     
     try {
-      await fetch('/api/notifications', {
+      const response = await fetch('/api/notifications', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notificationIds: [notification._id] })
       })
+      if (!response.ok) {
+        console.error('Failed to mark notification as read')
+      }
       
       // Update local state
       setNotifications(prev => 
@@ -185,6 +231,54 @@ export default function ActivityPage() {
       )
     } catch (error) {
       console.error('Error marking notification as read:', error)
+    }
+  }
+
+  const handleDeleteNotification = async (id: string) => {
+    if (!id) return
+
+    try {
+      setDeletingId(id)
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationIds: [id] })
+      })
+
+      if (!response.ok) {
+        console.error('Failed to delete notification')
+        return
+      }
+
+      setNotifications(prev => prev.filter(notification => notification._id !== id))
+    } catch (error) {
+      console.error('Error deleting notification:', error)
+    } finally {
+      setDeletingId(current => (current === id ? null : current))
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (unreadCount === 0) return
+
+    try {
+      setMarkingAll(true)
+      const response = await fetch('/api/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAll: true })
+      })
+
+      if (!response.ok) {
+        console.error('Failed to mark all notifications as read')
+        return
+      }
+
+      setNotifications(prev => prev.map(notification => ({ ...notification, read: true })))
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+    } finally {
+      setMarkingAll(false)
     }
   }
 
@@ -214,13 +308,32 @@ export default function ActivityPage() {
       <div className="flex-1 max-w-2xl mx-auto bg-background text-foreground min-h-screen">
         {/* Header */}
         <div className="sticky top-0 bg-background/95 backdrop-blur-md border-b border-border p-4 z-10">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-xl font-bold text-foreground">Notifications</h1>
-            {unreadCount > 0 && (
-              <Badge variant="secondary" className="bg-primary text-primary-foreground">
-                {unreadCount} new
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  disabled={markingAll}
+                  className="text-sm"
+                >
+                  {markingAll ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCheck className="h-4 w-4" />
+                  )}
+                  <span className="ml-2">Mark all read</span>
+                </Button>
+              )}
+              {unreadCount > 0 && (
+                <Badge variant="secondary" className="bg-primary text-primary-foreground">
+                  {unreadCount} new
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
 
@@ -229,10 +342,12 @@ export default function ActivityPage() {
           {notifications.length > 0 ? (
             <div className="divide-y divide-gray-800">
               {notifications.map((notification) => (
-                <NotificationItem 
+                <NotificationRow 
                   key={notification._id} 
                   notification={notification}
-                  onClick={markAsRead}
+                  onOpen={markAsRead}
+                  onDelete={handleDeleteNotification}
+                  isDeleting={deletingId === notification._id}
                 />
               ))}
             </div>

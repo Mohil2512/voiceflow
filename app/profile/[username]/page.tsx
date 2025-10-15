@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react"
 import { MapPin, Link as LinkIcon, Calendar } from "lucide-react"
 import { useDataWithCache } from '@/hooks/use-data-cache'
 import { FollowModal } from "@/components/profile/FollowModal"
+import { cn } from "@/lib/utils"
 
 type FollowStats = {
   followers: number
@@ -246,197 +247,211 @@ export default function UserProfilePage({ params }: { params: { username: string
         <div className="relative">
           <div className="h-24 md:h-32 bg-accent"></div>
           
-          <div className="px-3 md:px-6 pb-6">
-            <div className="flex justify-between items-start relative">
-              <Avatar className="w-16 h-16 md:w-24 md:h-24 border-2 md:border-4 border-background rounded-full absolute -top-8 md:-top-12">
-                <AvatarImage src={userProfile.avatar ?? undefined} alt={userProfile.name ?? 'Profile avatar'} />
-                <AvatarFallback className="text-lg md:text-2xl">
-                  {userProfile.name ? userProfile.name[0].toUpperCase() : "?"}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="w-16 h-8 md:w-24 md:h-12"></div>
-              
-              <div className="mt-2 md:mt-4 flex space-x-2">
-                {isSelf ? (
-                  <button 
-                    onClick={() => router.push('/profile')}
-                    className="px-3 md:px-4 py-1 border border-border rounded-full text-xs md:text-sm font-medium"
-                  >
-                    Edit Profile
-                  </button>
-                ) : session ? (
-                  <button 
-                    onClick={async () => {
-                      if (followLoading) return
-                      setFollowLoading(true)
-                      
-                      try {
-                        console.log('[Follow Button] Sending request for username:', username)
-                        const response = await fetch('/api/users/follow', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json'
-                          },
-                          body: JSON.stringify({
-                            targetUsername: username,
-                            action: isFollowing ? 'unfollow' : 'follow'
-                          })
-                        })
-                        
-                        if (response.ok) {
-                          const data = await response.json() as {
-                            isFollowing?: boolean
-                            stats?: Partial<FollowStats>
-                          }
-                          const nextFollowing = Boolean(data.isFollowing)
-                          setIsFollowing(nextFollowing)
-                          
-                          if (data.stats) {
-                            const { followers, following } = data.stats
-                            setFollowStats(prev => ({
-                              followers: typeof followers === 'number' ? followers : prev.followers,
-                              following: typeof following === 'number' ? following : prev.following
-                            }))
-                          } else {
-                            setFollowStats(prev => ({
-                              ...prev,
-                              followers: nextFollowing ? prev.followers + 1 : Math.max(prev.followers - 1, 0)
-                            }))
-                          }
-                          console.log('[Follow Button] Success:', { isFollowing: nextFollowing })
-                        } else {
-                          const errorData = await response.json()
-                          console.error('[Follow Button] Error response:', errorData)
-                          alert(`Failed to ${isFollowing ? 'unfollow' : 'follow'}: ${errorData.error || 'Unknown error'}`)
-                        }
-                      } catch (error) {
-                        console.error('[Follow Button] Exception:', error)
-                        alert(`Error: ${error instanceof Error ? error.message : 'Failed to update follow status'}`)
-                      } finally {
-                        setFollowLoading(false)
-                      }
-                    }}
-                    disabled={followLoading}
-                    className={`px-3 md:px-4 py-1 rounded-full text-xs md:text-sm font-medium ${
-                      isFollowing 
-                        ? 'border border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500 group' 
-                        : 'bg-primary text-primary-foreground hover:bg-primary/80'
-                    } transition-colors`}
-                    onMouseEnter={handleFollowHover}
-                    onMouseLeave={handleFollowLeave}
-                  >
-                    {followLoading 
-                      ? <span className="inline-block h-3 w-3 md:h-4 md:w-4 border-2 border-current rounded-full border-b-transparent animate-spin" /> 
-                      : isFollowing 
-                        ? 'Following' 
-                        : 'Follow'}
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => {
-                      localStorage.setItem('redirectAfterLogin', `/profile/${username}`);
-                      router.push('/auth/signin');
-                    }}
-                    className="px-3 md:px-4 py-1 bg-primary text-primary-foreground rounded-full text-xs md:text-sm font-medium"
-                  >
-                    Follow
-                  </button>
-                )}
-              </div>
-            </div>
+          <div className="px-4 md:px-6 pb-6">
+            <div className="relative pt-16 md:pt-0">
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3 md:gap-6 w-full">
+                    <Avatar
+                      className={cn(
+                        "w-20 h-20 border-2 border-background rounded-full -mt-16 sm:-mt-12",
+                        "md:w-24 md:h-24 md:border-4 md:absolute md:-top-12"
+                      )}
+                    >
+                      <AvatarImage src={userProfile.avatar ?? undefined} alt={userProfile.name ?? 'Profile avatar'} />
+                      <AvatarFallback className="text-lg md:text-2xl">
+                        {userProfile.name ? userProfile.name[0].toUpperCase() : "?"}
+                      </AvatarFallback>
+                    </Avatar>
 
-            <div className="mt-4 md:mt-6">
-              <div className="flex flex-col">
-                <h1 className="text-lg md:text-xl font-bold">{userProfile.name}</h1>
-                <span className="text-sm md:text-base text-muted-foreground">@{username}</span>
-                
-                <div className="flex mt-2 space-x-4 text-xs md:text-sm">
-                  <div>
-                    <span className="font-bold">{followStats.following}</span> 
-                    <span className="text-muted-foreground ml-1">Following</span>
+                    <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1.5 w-full md:pl-28">
+                      <div className="flex flex-col items-center sm:items-start gap-0.5 w-full">
+                        <h1 className="text-base md:text-xl font-bold break-words max-w-full">{userProfile.name}</h1>
+                        <span className="text-xs md:text-base text-muted-foreground break-all">@{username}</span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs md:text-sm">
+                        <div className="text-center">
+                          <span className="block font-semibold">{userPosts.length}</span>
+                          <span className="text-muted-foreground">Posts</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setFollowModalTab('followers')
+                            setFollowModalOpen(true)
+                          }}
+                          className="text-center hover:underline"
+                          type="button"
+                        >
+                          <span className="block font-semibold">{followStats.followers}</span>
+                          <span className="text-muted-foreground">Followers</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFollowModalTab('following')
+                            setFollowModalOpen(true)
+                          }}
+                          className="text-center hover:underline"
+                          type="button"
+                        >
+                          <span className="block font-semibold">{followStats.following}</span>
+                          <span className="text-muted-foreground">Following</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-bold">{followStats.followers}</span> 
-                    <span className="text-muted-foreground ml-1">Followers</span>
+
+                  <div className="flex w-full md:w-auto justify-center md:justify-end">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                      {isSelf ? (
+                        <button 
+                          onClick={() => router.push('/profile')}
+                          className="w-full sm:w-auto px-3 md:px-4 py-2 border border-border rounded-full text-xs md:text-sm font-medium"
+                          type="button"
+                        >
+                          Edit Profile
+                        </button>
+                      ) : session ? (
+                        <button 
+                          onClick={async () => {
+                            if (followLoading) return
+                            setFollowLoading(true)
+                            
+                            try {
+                              console.log('[Follow Button] Sending request for username:', username)
+                              const response = await fetch('/api/users/follow', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                  targetUsername: username,
+                                  action: isFollowing ? 'unfollow' : 'follow'
+                                })
+                              })
+                              
+                              if (response.ok) {
+                                const data = await response.json() as {
+                                  isFollowing?: boolean
+                                  stats?: Partial<FollowStats>
+                                }
+                                const nextFollowing = Boolean(data.isFollowing)
+                                setIsFollowing(nextFollowing)
+                                
+                                if (data.stats) {
+                                  const { followers, following } = data.stats
+                                  setFollowStats(prev => ({
+                                    followers: typeof followers === 'number' ? followers : prev.followers,
+                                    following: typeof following === 'number' ? following : prev.following
+                                  }))
+                                } else {
+                                  setFollowStats(prev => ({
+                                    ...prev,
+                                    followers: nextFollowing ? prev.followers + 1 : Math.max(prev.followers - 1, 0)
+                                  }))
+                                }
+                                console.log('[Follow Button] Success:', { isFollowing: nextFollowing })
+                              } else {
+                                const errorData = await response.json()
+                                console.error('[Follow Button] Error response:', errorData)
+                                alert(`Failed to ${isFollowing ? 'unfollow' : 'follow'}: ${errorData.error || 'Unknown error'}`)
+                              }
+                            } catch (error) {
+                              console.error('[Follow Button] Exception:', error)
+                              alert(`Error: ${error instanceof Error ? error.message : 'Failed to update follow status'}`)
+                            } finally {
+                              setFollowLoading(false)
+                            }
+                          }}
+                          disabled={followLoading}
+                          className={`px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium ${
+                            isFollowing 
+                              ? 'border border-border hover:bg-red-500/10 hover:text-red-500 hover:border-red-500 group' 
+                              : 'bg-primary text-primary-foreground hover:bg-primary/80'
+                          } transition-colors w-full sm:w-auto`}
+                          onMouseEnter={handleFollowHover}
+                          onMouseLeave={handleFollowLeave}
+                          type="button"
+                        >
+                          {followLoading 
+                            ? <span className="inline-block h-3 w-3 md:h-4 md:w-4 border-2 border-current rounded-full border-b-transparent animate-spin" /> 
+                            : isFollowing 
+                              ? 'Following' 
+                              : 'Follow'}
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => {
+                            localStorage.setItem('redirectAfterLogin', `/profile/${username}`);
+                            router.push('/auth/signin');
+                          }}
+                          className="w-full sm:w-auto px-3 md:px-4 py-2 bg-primary text-primary-foreground rounded-full text-xs md:text-sm font-medium"
+                          type="button"
+                        >
+                          Follow
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {userProfile.bio && (
-                <p className="mt-3 md:mt-4 text-sm md:text-base text-foreground">{userProfile.bio}</p>
-              )}
+                {userProfile.bio && (
+                  <p className="text-sm md:text-base text-foreground/90 text-center md:text-left">{userProfile.bio}</p>
+                )}
 
-              <div className="flex flex-wrap gap-3 md:gap-4 mt-3 md:mt-4 text-muted-foreground text-xs md:text-sm">
-                {userProfile.location && (
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 text-muted-foreground text-xs md:text-sm">
+                  {userProfile.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                      <span>{userProfile.location}</span>
+                    </div>
+                  )}
+                  
+                  {userProfile.website && (
+                    <div className="flex items-center gap-1 max-w-full">
+                      <LinkIcon className="h-3 w-3 md:h-4 md:w-4" />
+                      <a
+                        href={userProfile.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline truncate max-w-[160px] sm:max-w-[200px]"
+                      >
+                        {userProfile.website.replace(/(^\w+:|^)\/\//, '')}
+                      </a>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3 md:h-4 md:w-4" />
-                    <span>{userProfile.location}</span>
+                    <Calendar className="h-3 w-3 md:h-4 md:w-4" />
+                    <span>Joined {new Date(userProfile.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                   </div>
-                )}
-                
-                {userProfile.website && (
-                  <div className="flex items-center gap-1">
-                    <LinkIcon className="h-3 w-3 md:h-4 md:w-4" />
-                    <a href={userProfile.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate max-w-[200px]">
-                      {userProfile.website.replace(/(^\w+:|^)\/\//, '')}
-                    </a>
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3 md:h-4 md:w-4" />
-                  <span>Joined {new Date(userProfile.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                 </div>
-              </div>
-
-              <div className="flex gap-4 md:gap-5 mt-3 md:mt-4">
-                <button
-                  onClick={() => {
-                    setFollowModalTab('following')
-                    setFollowModalOpen(true)
-                  }}
-                  className="hover:underline cursor-pointer"
-                >
-                  <span className="font-semibold">{followStats.following}</span>{" "}
-                  <span className="text-muted-foreground">Following</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setFollowModalTab('followers')
-                    setFollowModalOpen(true)
-                  }}
-                  className="hover:underline cursor-pointer"
-                >
-                  <span className="font-semibold">{followStats.followers}</span>{" "}
-                  <span className="text-muted-foreground">Followers</span>
-                </button>
               </div>
             </div>
             
             <Tabs defaultValue="posts" className="mt-4 md:mt-6">
-              <TabsList className="w-full justify-start border-b border-border rounded-none bg-transparent h-auto p-0">
+              <TabsList className="grid grid-cols-4 w-full border-b border-border rounded-none bg-transparent h-auto p-0">
                 <TabsTrigger 
                   value="posts" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
+                  className="w-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm text-center"
                 >
                   Posts
                 </TabsTrigger>
                 <TabsTrigger 
                   value="replies" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
+                  className="w-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm text-center"
                 >
                   Replies
                 </TabsTrigger>
                 <TabsTrigger 
                   value="media" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
+                  className="w-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm text-center"
                 >
                   Media
                 </TabsTrigger>
                 <TabsTrigger 
                   value="likes" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm"
+                  className="w-full rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-2 px-2 md:px-4 text-xs md:text-sm text-center"
                 >
                   Likes
                 </TabsTrigger>

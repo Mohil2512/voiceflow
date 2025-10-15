@@ -17,7 +17,9 @@ import {
   Moon,
   PlusSquare,
   Menu,
-  MoreHorizontal
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CreatePostModal } from "@/components/post/CreatePostModal"
@@ -63,6 +65,7 @@ export function ThemeToggle({ mobile = false }: { mobile?: boolean }) {
       <button
         onClick={handleThemeChange}
         className="p-2 rounded-lg transition-colors hover:bg-accent"
+        aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       >
         {theme === "dark" ? (
           <Sun className="h-5 w-5 text-muted-foreground" />
@@ -83,12 +86,17 @@ export function ThemeToggle({ mobile = false }: { mobile?: boolean }) {
       ) : (
         <Moon className="h-5 w-5 text-muted-foreground" />
       )}
-      <span className="text-xs text-muted-foreground">Theme</span>
+      <span className="text-xs text-muted-foreground">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
     </button>
   )
 }
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+}
+
+export function AppSidebar({ collapsed = false, onToggleCollapse }: AppSidebarProps = {}) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
@@ -98,6 +106,12 @@ export function AppSidebar() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (collapsed) {
+      setShowMore(false)
+    }
+  }, [collapsed])
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" })
@@ -119,12 +133,6 @@ export function AppSidebar() {
       title: "Create",
       url: "#",
       icon: PlusSquare,
-    },
-    {
-      title: "Notification",
-      url: "/notification",
-      icon: Heart,
-      requiresAuth: true
     },
     {
       title: "Profile",
@@ -174,17 +182,13 @@ export function AppSidebar() {
     },
   ]
 
-  const getCurrentThemeLabel = () => {
-    if (theme === "dark") return "Dark Mode"
-    if (theme === "light") return "Light Mode"
-    return "Theme"
-  }
+  const getCurrentThemeLabel = () => (theme === "dark" ? "Light Mode" : "Dark Mode")
 
   const moreMenuItems = [
     {
       title: getCurrentThemeLabel(),
       url: "#",
-      icon: theme === "dark" ? Moon : Sun,
+      icon: theme === "dark" ? Sun : Moon,
       onClick: () => {
         // Toggle between dark and light modes only
         const newTheme = theme === "dark" ? "light" : "dark";
@@ -228,24 +232,31 @@ export function AppSidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex w-72 h-screen bg-background border-r border-border flex-col flex-shrink-0 overflow-hidden">
-        <div className="flex-1 px-6 py-8 overflow-y-auto">
-          <div className="mb-8 px-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center">
+      <div
+        className={cn(
+          "hidden md:flex h-screen bg-background border-r border-border flex-col flex-shrink-0 overflow-hidden transition-[width] duration-200",
+          collapsed ? "w-20" : "w-72"
+        )}
+      >
+        <div className={cn("flex-1 overflow-y-auto", collapsed ? "px-3 py-8" : "px-6 py-8")}>        
+          <div className={cn("mb-8", collapsed ? "flex justify-center" : "px-2")}>          
+            <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center">
                 <Image
                   src="/logo.png"
                   alt="Voiceflow Logo"
-                  width={32}
-                  height={32}
+                  width={40}
+                  height={40}
                   className="w-full h-full object-contain"
                   priority
                 />
               </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-xl text-foreground">Voiceflow</span>
-                <span className="text-xs text-muted-foreground">by Anjaneya</span>
-              </div>
+              {!collapsed && (
+                <div className="flex flex-col">
+                  <span className="font-bold text-xl text-foreground">Voiceflow</span>
+                  <span className="text-xs text-muted-foreground">by Anjaneya</span>
+                </div>
+              )}
             </div>
           </div>
           <nav className="space-y-1">
@@ -260,12 +271,14 @@ export function AppSidebar() {
                     trigger={
                       <button
                         className={cn(
-                          "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full",
+                          "flex items-center rounded-xl transition-colors w-full",
+                          collapsed ? "justify-center gap-0 px-2 py-3" : "gap-4 px-4 py-3",
                           "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                         )}
+                        title={collapsed ? item.title : undefined}
                       >
-                        <item.icon className="h-7 w-7 stroke-1" />
-                        <span className="text-xl font-normal">{item.title}</span>
+                        <item.icon className={cn("stroke-1", collapsed ? "h-7 w-7" : "h-7 w-7")} />
+                        {!collapsed && <span className="text-xl font-normal">{item.title}</span>}
                       </button>
                     }
                   />
@@ -274,7 +287,7 @@ export function AppSidebar() {
               
               // Special handling for notification
               if (item.title === "Notification") {
-                return <NotificationLink key={item.title} isActive={isActive} />;
+                return <NotificationLink key={item.title} isActive={isActive} collapsed={collapsed} />;
               }
               
               return item.onClick ? (
@@ -283,14 +296,16 @@ export function AppSidebar() {
                   key={item.title}
                   onClick={item.onClick}
                   className={cn(
-                    "flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full",
+                    "flex items-center rounded-xl text-left transition-colors w-full",
+                    collapsed ? "justify-center gap-0 px-2 py-3" : "gap-4 px-4 py-3",
                     isActive
                       ? "bg-accent text-accent-foreground font-medium"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
+                  title={collapsed ? item.title : undefined}
                 >
                   <item.icon className={cn("h-7 w-7", isActive ? "stroke-2" : "stroke-1")} />
-                  <span className="text-xl font-normal">{item.title}</span>
+                  {!collapsed && <span className="text-xl font-normal">{item.title}</span>}
                 </button>
               ) : (
                 // Use AppSidebarLink for navigation items to handle auth requirements
@@ -301,6 +316,7 @@ export function AppSidebar() {
                   icon={item.icon}
                   isActive={isActive}
                   requiresAuth={item.requiresAuth}
+                  collapsed={collapsed}
                 />
               )
             })}
@@ -308,20 +324,36 @@ export function AppSidebar() {
           
           {/* More Menu Dropdown */}
           {showMore && (
-            <div className="mt-2 space-y-1 ml-4 border-l-2 border-border pl-4">
+            <div className={cn("mt-2 space-y-1", collapsed ? "px-2" : "ml-4 border-l-2 border-border pl-4")}>             
               {moreMenuItems.map((item) => (
                 <button
                   key={item.title}
                   onClick={item.onClick}
-                  className="flex items-center gap-4 rounded-xl px-4 py-3 text-left transition-colors w-full text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  className={cn(
+                    "flex items-center rounded-xl text-left transition-colors w-full text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    collapsed ? "justify-center gap-0 px-2 py-3" : "gap-4 px-4 py-3"
+                  )}
+                  title={collapsed ? item.title : undefined}
                 >
                   <item.icon className="h-6 w-6" />
-                  <span className="text-lg font-normal">{item.title}</span>
+                  {!collapsed && <span className="text-lg font-normal">{item.title}</span>}
                 </button>
               ))}
             </div>
           )}
         </div>
+
+        {onToggleCollapse && (
+          <div className={cn("border-t border-border", collapsed ? "px-3 py-4" : "px-6 py-4")}>          
+            <button
+              onClick={onToggleCollapse}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              <span className={collapsed ? "sr-only" : undefined}>{collapsed ? "Expand sidebar" : "Collapse sidebar"}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Mobile Bottom Navigation */}

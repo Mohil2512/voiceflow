@@ -174,59 +174,71 @@ export default function Profile() {
     <Layout>
       <div className="max-w-2xl mx-auto">
         {/* Profile Header */}
-        <div className="px-6 py-8 border-b border-border">
-          <div className="flex items-start gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={profile?.image || '/placeholder.svg'} alt={profile?.name || 'Profile'} />
-              <AvatarFallback className="text-2xl">
-                {profile?.name?.[0] || profile?.username?.[0] || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-bold">{profile?.name || 'User'}</h1>
-                {profile?.isVerified && (
-                  <Badge variant="secondary" className="text-xs">
-                    ✓
-                  </Badge>
+        <div className="px-4 md:px-6 py-6 md:py-8 border-b border-border">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3 md:gap-6 w-full">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
+                <AvatarImage src={profile?.image || '/placeholder.svg'} alt={profile?.name || 'Profile'} />
+                <AvatarFallback className="text-2xl sm:text-3xl">
+                  {profile?.name?.[0] || profile?.username?.[0] || 'U'}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-2 w-full">
+                <div className="flex flex-col items-center sm:items-start gap-1 w-full">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl md:text-2xl font-bold break-words">{profile?.name || 'User'}</h1>
+                    {profile?.isVerified && (
+                      <Badge variant="secondary" className="text-xs">
+                        ✓
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm md:text-base text-muted-foreground break-all">
+                    @{profile?.username || profile?.email?.split('@')[0] || 'user'}
+                  </p>
+                </div>
+
+                {profile?.bio && (
+                  <p className="text-sm text-foreground/90 max-w-full">{profile.bio}</p>
                 )}
-              </div>
-              <p className="text-muted-foreground mb-3">
-                @{profile?.username || profile?.email?.split('@')[0] || 'user'}
-              </p>
-              {profile?.bio && (
-                <p className="text-sm mb-4">{profile.bio}</p>
-              )}
-              <div className="flex gap-4 text-sm text-muted-foreground">
-                <span>{Array.isArray(posts) ? posts.length : 0} posts</span>
-                <button
-                  onClick={() => {
-                    setFollowModalTab('followers')
-                    setFollowModalOpen(true)
-                  }}
-                  className="hover:underline cursor-pointer"
-                >
-                  <span className="font-semibold">{profile?.followers?.length || 0}</span>{" "}
-                  <span>Followers</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setFollowModalTab('following')
-                    setFollowModalOpen(true)
-                  }}
-                  className="hover:underline cursor-pointer"
-                >
-                  <span className="font-semibold">{profile?.following?.length || 0}</span>{" "}
-                  <span>Following</span>
-                </button>
+
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs md:text-sm text-muted-foreground">
+                  <div className="text-center">
+                    <span className="block font-semibold text-foreground">{Array.isArray(posts) ? posts.length : 0}</span>
+                    <span>Posts</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setFollowModalTab('followers')
+                      setFollowModalOpen(true)
+                    }}
+                    className="text-center hover:underline"
+                    type="button"
+                  >
+                    <span className="block font-semibold text-foreground">{profile?.followers?.length || 0}</span>
+                    <span>Followers</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFollowModalTab('following')
+                      setFollowModalOpen(true)
+                    }}
+                    className="text-center hover:underline"
+                    type="button"
+                  >
+                    <span className="block font-semibold text-foreground">{profile?.following?.length || 0}</span>
+                    <span>Following</span>
+                  </button>
+                </div>
               </div>
             </div>
-            
+
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => setShowEditProfile(true)}
+              className="self-center sm:self-auto px-4 py-2 rounded-full font-medium"
             >
               Edit profile
             </Button>
